@@ -1,12 +1,13 @@
 import os
+import json
+import time
+import threading
 from tkinter import *
 from tkinter.ttk import *
-from pygame import mixer
+from yt_dlp import YoutubeDL
 import mutagen
 from mutagen.mp3 import MP3
-import threading
-from yt_dlp import YoutubeDL
-import time
+from pygame import mixer
 
 class MusicBox:
 
@@ -16,12 +17,14 @@ class MusicBox:
         self.filepath = self.path + '/files'
         print(self.filepath)
         self.files = os.listdir(self.filepath)
+        
+        self.settings = {}
 
         # Mixer
         # add 2 channels for fade in/out
         mixer.init()
         self.volume = DoubleVar()
-        self.volume.set(0.5)
+        self.volume.set(1.0)
         mixer.music.set_volume(self.volume.get())
 
         # Current Track and Playlist
@@ -70,9 +73,11 @@ class MusicBox:
         self.root.bind('<Escape>', self.remove_focus)
 
         # Frame Setups
+        self.__load_settings()
         self.__setup_download()
         self.__setup_player()
         self.__setup_playlists()
+        
         
         self.play_track(self.track_name)
 
@@ -229,6 +234,18 @@ class MusicBox:
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
         self.lb_tracks.bind('<<ListboxSelect>>', lambda e: self.queue_track(self.lb_tracks.get(self.lb_tracks.curselection())))
         self.lb_tracks.bind("<Double-1>", lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+
+    def __load_settings(self):
+        settings_path = self.path + '/settings.json'
+        with open(settings_path, 'r', encoding='utf-8') as settings_file:
+            self.settings = json.load(settings_file)
+        self.volume.set(float(self.settings["volume"]))
+    
+    def save_settings(self):
+        settings_path = self.path + '/settings.json'
+        self.settings["volume"] = self.volume.get()
+        with open(settings_path, 'w', encoding='utf-8') as settings_file:
+            json.dump(self.settings, settings_file, indent=4)
 
     def remove_focus(self, event):
         self.root.focus_set()
@@ -462,8 +479,9 @@ class Playlist:
 
 def main():
     root = Tk()
-    MusicBox(root)
+    music_box = MusicBox(root)
     root.mainloop()
+    music_box.save_settings()
 
 if __name__ == '__main__':
     main()
