@@ -9,14 +9,14 @@ from yt_dlp import YoutubeDL
 import time
 
 class MusicBox:
-    
+
     def __init__(self, root):
         # Directory Information
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.filepath = self.path + '/files'
         print(self.filepath)
         self.files = os.listdir(self.path)
-        
+
         # Current Track and Playlist
         self.track_name = self.files[0] # change to only name
         self.filename = self.files[0]
@@ -27,7 +27,7 @@ class MusicBox:
         self.last_play_time = None
         self.volume = DoubleVar()
         self.volume.set(0.5)
-        
+
         self.all_tracks = Playlist('All')
         for track in self.files:
             self.all_tracks.add_track(track, track) # change to names
@@ -57,21 +57,20 @@ class MusicBox:
         root.configure(bg='medium purple')
         root.minsize(750, 500)
         self.root.title('Adaptive Music Box')
-        
+
         self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
         self.style_default = Style(self.style_name, borderwidth=2, relief='solid')
-        
+
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=0)
         self.root.rowconfigure(1, weight=1, minsize=100)
-        
+
         # Frame Setups
         self.__setup_download()
         self.__setup_player()
         self.__setup_playlists()
-        
-    
+
     def __setup_download(self):
         '''
         Sets up the Download Frame
@@ -84,7 +83,7 @@ class MusicBox:
         self.frm_download.rowconfigure(0, weight=1, minsize=25)
         self.frm_download.rowconfigure(1, weight=1, minsize=25)
         self.frm_download.rowconfigure(2, weight=1, minsize=25)
-        
+
         self.lbl_url = Label(self.frm_download, text='URL:')
         self.ent_url = Entry(self.frm_download)
         self.ent_url.insert(0, 'https://youtu.be/FcaHJDj6KEE')
@@ -92,22 +91,25 @@ class MusicBox:
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
         self.var_status = StringVar(self.frm_download, value='Please enter a URL')
         self.lbl_status = Label(self.frm_download, textvariable=self.var_status)
-        
+
         self.lbl_url.grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.ent_url.grid(row=0, column=1, sticky='ew')
         self.btn_url.grid(row=0, column=2, padx=5, sticky='e')
         self.bar_progress.grid(row=1, column=1, pady=5, sticky='ew')
         self.lbl_status.grid(row=2, column=1, sticky='ew')
-        
+
         self.btn_url.bind('<Button-1>', self.download)
 
     def __setup_player(self):
         '''
         Sets up track Player Frame
         '''
+
+        # pygame Mixer
+        # Eventually add 2 channels to fade music in and out with each other
         mixer.init()
         mixer.music.set_volume(self.volume.get())
-        
+
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=25, pady=25, sticky='nsew')
         self.frm_player.columnconfigure(0, weight=0, minsize=100)
@@ -116,52 +118,51 @@ class MusicBox:
         self.frm_player.rowconfigure(0, weight=1, minsize=50)
         self.frm_player.rowconfigure(1, weight=1, minsize=50)
         self.frm_player.rowconfigure(2, weight=1, minsize=100)
-        
-        
+
         self.var_title = StringVar(self.frm_player, value='Foo Bar')
         self.lbl_title = Label(self.frm_player, textvariable=self.var_title)
-        
+
         self.var_progress = StringVar(self.frm_player, value='0:00:00')
         self.lbl_progress = Label(self.frm_player, textvariable=self.var_progress)
         self.sld_progress = Scale(self.frm_player, orient=HORIZONTAL, from_=0.0, to=100.0)
         self.var_length = StringVar(self.frm_player, value='99:99:99')
         self.lbl_length = Label(self.frm_player, textvariable=self.var_length)
-        
+
         # Navigation
         self.frm_buttons = Frame(self.frm_player)
         self.frm_buttons.grid(row=2, column=1, padx=25, pady=15, sticky='nesw')
         self.frm_buttons.columnconfigure(0, weight=1)
         self.frm_buttons.columnconfigure(1, weight=1)
         self.frm_buttons.columnconfigure(2, weight=1)
-        
+
         self.btn_start = Button(self.frm_buttons, text='|<<')
         self.btn_play = Button(self.frm_buttons, text='>/||')
         self.btn_end = Button(self.frm_buttons, text='>>|')
         # self.btn_shuffle = Button(self.frm_player, text='=x=')
-        
+
         self.lbl_title.grid(row=0, column=0, columnspan=3, padx=5, pady=10, sticky='n')
         self.lbl_progress.grid(row=1, column=0, padx=5, pady=10, sticky='e')
         self.sld_progress.grid(row=1, column=1, padx=5, pady=10, sticky='ew')
         self.lbl_length.grid(row=1, column=2, padx=5, pady=10, sticky='w')
-        
+
         self.btn_start.grid(row=0, column=0, padx=5, pady=10, sticky='e')
         self.btn_play.grid(row=0, column=1, padx=5, pady=10)
         self.btn_end.grid(row=0, column=2, padx=5, pady=10, sticky='w')
-        
+
         # Volume
         self.frm_volume = Frame(self.frm_player)
         self.frm_volume.grid(row=2, column=2, padx=10, pady=15, sticky='nse')
         self.frm_volume.columnconfigure(0, weight=1, minsize=20)
         self.frm_volume.rowconfigure(0, weight=1, minsize=100)
         self.frm_volume.rowconfigure(1, weight=0, minsize=10)
-        
+
         self.sld_volume = Scale(self.frm_volume, orient=VERTICAL, from_=1, to=0, variable=self.volume, command=self.update_volume)
         self.var_volume = StringVar(self.frm_volume, value=(int(100 * self.volume.get())))
         self.lbl_volume = Label(self.frm_volume, textvariable=self.var_volume)
-        
+
         self.sld_volume.grid(row=0, column=0, padx=10, pady=5, sticky='nsw')
         self.lbl_volume.grid(row=1, column=0, padx=5, pady=5, sticky='n')
-        
+
         # Playlist with Scrollbar
         self.frm_playlists = Frame(self.frm_player, style=self.style_name)
         self.frm_playlists.grid(row=2, column=0, padx=10, pady=15, sticky='nw')
@@ -198,7 +199,7 @@ class MusicBox:
         def _on_mousewheel(event):
             self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), "units")
         self.cnv_playlists.bind_all("<MouseWheel>", _on_mousewheel)
-        
+
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
@@ -209,7 +210,7 @@ class MusicBox:
         self.root.bind('<Down>', self.volume_down)
         self.root.bind('<KP_Home>', self.start)
         self.root.bind('<KP_End>', self.end)
-        
+
         mixer.music.stop()
         mixer.music.unload()
         self.var_title.set(self.filename)
@@ -225,11 +226,11 @@ class MusicBox:
         '''
         self.frm_playlist = Frame(self.root, style=self.style_name)
         self.frm_playlist.grid(row=1, column=1, padx=25, pady=25, sticky='nsew')
-        
+
         self.frm_playlist.columnconfigure(0, weight=1, minsize=100)
         self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
         self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
-        
+
         self.var_playlist = StringVar(self.frm_playlist, value='Explore')
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.playlist)
         self.cb_playlists['values'] = (playlist.name for playlist in self.playlists)
@@ -237,10 +238,10 @@ class MusicBox:
         self.lb_tracks = Listbox(self.frm_playlist)
         for track in self.playlist.get_tracknames():
             self.lb_tracks.insert(track)
-        
+
         self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
-        
+
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
 
     def _yt_progress_hook(self, d):
@@ -288,7 +289,7 @@ class MusicBox:
         mixer.music.rewind()
         self.last_play_time = None
         self.track_pos = 0
-    
+
     def play(self, event):
         if mixer.music.get_busy():
             mixer.music.pause()
@@ -349,11 +350,11 @@ class MusicBox:
         self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
         mixer.music.set_volume(self.volume.get())
         self.var_volume.set(int(100 * self.volume.get()))
-    
+
     def update_volume(self, val):
         mixer.music.set_volume(self.volume.get())
         self.var_volume.set(int(float(val) * 100))
-        
+
     def _start_progress_updater(self):
         if self.is_playing:
             if not mixer.music.get_busy():
@@ -387,14 +388,14 @@ class MusicBox:
 
     def change_playlist(self, event):
         print(self.playlist.get())
-        
+
     def toggle_playlist(self, val):
         if val >=0:
             self.playlists[val].add_track(self.track_name, self.file)
         else:
             self.playlists[-val-1].remove_track(self.track_name)
         self._update_playlist(val)
-    
+
     def _update_playlist(self, num): #update playlist frame
         if num >=0:
             pass
@@ -402,19 +403,18 @@ class MusicBox:
             pass
 
 class Playlist:
-    
     def __init__(self, name):
         self.name = name
         self.tracks = {
             'name': 'filename.mp3'
         }
-        
+
     def set_name(self, name):
         self.name = name
-        
+
     def add_track(self, name, file):
         self.tracks[name] = file
-        
+
     def remove_track(self, name):
         del self.tracks[name]
 
@@ -423,13 +423,13 @@ class Playlist:
         for name, _ in self.tracks.items:
             names.append[name]
         return names
-    
+
     def get_tracks(self):
         tracks = []
         for _, track in self.tracks.items:
             tracks.append[track]
         return tracks
-    
+
     def get_track(self, name):
         return self.tracks[name]
 
