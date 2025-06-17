@@ -15,7 +15,7 @@ class MusicBox:
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.filepath = self.path + '/files'
         print(self.filepath)
-        self.files = os.listdir(self.path)
+        self.files = os.listdir(self.filepath)
 
         # Current Track and Playlist
         self.track_name = self.files[0] # change to only name
@@ -30,7 +30,7 @@ class MusicBox:
 
         self.all_tracks = Playlist('All')
         for track in self.files:
-            self.all_tracks.add_track(track, track) # change to names
+            self.all_tracks.add_track(self._clean_filename(track), track)
         self.playlists = []
         for i in range(10): #change to have their own names saved in json file (each listed under playlistN has a name att and the dict of tracks)
             self.playlists.append(Playlist(f'Playlist {i}'))
@@ -58,13 +58,16 @@ class MusicBox:
         root.minsize(750, 500)
         self.root.title('Adaptive Music Box')
 
+        self.style_default = Style()
         self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
-        self.style_default = Style(self.style_name, borderwidth=2, relief='solid')
+        self.style_default.configure(self.style_name, borderwidth=2, relief='solid')
 
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=0)
         self.root.rowconfigure(1, weight=1, minsize=100)
+        
+        self.root.bind('<Escape>', self.remove_focus)
 
         # Frame Setups
         self.__setup_download()
@@ -190,16 +193,6 @@ class MusicBox:
             self.cbtn_playlists.append(Checkbutton(self.inner_playlists, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
 
-        # Update scrollregion when widgets are added
-        def _on_frame_configure(event):
-            self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox("all"))
-        self.inner_playlists.bind("<Configure>", _on_frame_configure)
-
-        # Optional: enable mousewheel scrolling
-        def _on_mousewheel(event):
-            self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), "units")
-        self.cnv_playlists.bind_all("<MouseWheel>", _on_mousewheel)
-
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
@@ -210,11 +203,14 @@ class MusicBox:
         self.root.bind('<Down>', self.volume_down)
         self.root.bind('<KP_Home>', self.start)
         self.root.bind('<KP_End>', self.end)
+        self.inner_playlists.bind("<Configure>", self._on_frame_configure)
+        self.cnv_playlists.bind("<Enter>", self._bind_mousewheel)
+        self.cnv_playlists.bind("<Leave>", self._unbind_mousewheel)
 
         mixer.music.stop()
         mixer.music.unload()
         self.var_title.set(self.filename)
-        mixer.music.load(f'{self.path}/{self.filename}')
+        mixer.music.load(f'{self.filepath}/{self.filename}')
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.play()
@@ -231,18 +227,22 @@ class MusicBox:
         self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
         self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
 
-        self.var_playlist = StringVar(self.frm_playlist, value='Explore')
-        self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.playlist)
-        self.cb_playlists['values'] = (playlist.name for playlist in self.playlists)
-        # self.lb_tracks = Listbox(self.frm_playlist, height=10)
+        self.var_playlist = StringVar(self.frm_playlist, value=self.all_tracks.name)
+        self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
+        self.cb_playlists['values'] = tuple([self.all_tracks.name]) + tuple(playlist.name for playlist in self.playlists)
         self.lb_tracks = Listbox(self.frm_playlist)
-        for track in self.playlist.get_tracknames():
-            self.lb_tracks.insert(track)
+        i = 1
+        for track in self.playlist.get_track_names():
+            self.lb_tracks.insert(i, track)
+            i += 1
 
         self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+
+    def remove_focus(self, event):
+        self.root.focus_set()
 
     def _yt_progress_hook(self, d):
         if d['status'] == 'downloading':
@@ -278,7 +278,7 @@ class MusicBox:
                     info = ydl.extract_info(url, download=True)  # Don't download yet
                     filename = ydl.prepare_filename(info)
                     print(f'Will save as: {filename}')
-                    self.all_music.add_track('test', filename)
+                    self.all_music.add_track(self._clean_filename(filename), filename)
                     self.root.after(0, self.var_status.set, 'Success!')
         except Exception as e:
             self.root.after(0, self.var_status.set, f'Error: {e}')
@@ -342,14 +342,16 @@ class MusicBox:
             self.last_play_time = None
 
     def volume_up(self, event):
-        self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
-        mixer.music.set_volume(self.volume.get())
-        self.var_volume.set(int(100 * self.volume.get()))
+        if self.root.focus_get() == self.root:
+            self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
+            mixer.music.set_volume(self.volume.get())
+            self.var_volume.set(int(100 * self.volume.get()))
 
     def volume_down(self, event):
-        self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
-        mixer.music.set_volume(self.volume.get())
-        self.var_volume.set(int(100 * self.volume.get()))
+        if self.root.focus_get() == self.root:
+            self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
+            mixer.music.set_volume(self.volume.get())
+            self.var_volume.set(int(100 * self.volume.get()))
 
     def update_volume(self, val):
         mixer.music.set_volume(self.volume.get())
@@ -386,8 +388,20 @@ class MusicBox:
 
         return hours, mins, secs
 
+    def _on_frame_configure(self, event):
+        self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox("all"))
+
+    def _on_mousewheel(self, event):
+        self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    def _bind_mousewheel(self, event):
+        self.cnv_playlists.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, event):
+        self.cnv_playlists.unbind_all("<MouseWheel>")
+
     def change_playlist(self, event):
-        print(self.playlist.get())
+        print(self.var_playlist.get())
 
     def toggle_playlist(self, val):
         if val >=0:
@@ -402,12 +416,14 @@ class MusicBox:
         else:
             pass
 
+    def _clean_filename(self, file):
+        index = file.index('[')
+        return file[:index-1]
+
 class Playlist:
     def __init__(self, name):
         self.name = name
-        self.tracks = {
-            'name': 'filename.mp3'
-        }
+        self.tracks = {}
 
     def set_name(self, name):
         self.name = name
@@ -418,16 +434,16 @@ class Playlist:
     def remove_track(self, name):
         del self.tracks[name]
 
-    def get_tracknames(self):
+    def get_track_names(self):
         names = []
-        for name, _ in self.tracks.items:
-            names.append[name]
+        for name, _ in self.tracks.items():
+            names.append(name)
         return names
 
     def get_tracks(self):
         tracks = []
-        for _, track in self.tracks.items:
-            tracks.append[track]
+        for _, track in self.tracks.items():
+            tracks.append(track)
         return tracks
 
     def get_track(self, name):
