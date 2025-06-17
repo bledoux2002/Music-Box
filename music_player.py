@@ -217,6 +217,7 @@ class MusicBox:
         mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
         self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        self.sld_progress.set(100 * self.track_pos / self.track_length)
         if self.is_playing:
             self.last_play_time = time.time()
         else:
@@ -231,6 +232,7 @@ class MusicBox:
         mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
         self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        self.sld_progress.set(100 * self.track_pos / self.track_length)
         if self.is_playing:
             self.last_play_time = time.time()
         else:
