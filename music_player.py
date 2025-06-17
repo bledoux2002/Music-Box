@@ -4,6 +4,7 @@ from tkinter.ttk import *
 from pygame import mixer
 import threading
 from yt_dlp import YoutubeDL
+import time
 
 class MusicBox:
     
@@ -12,6 +13,10 @@ class MusicBox:
         self.status = None  # Will be set in __setup_download
         self.bar_progress = None  # Will be set in __setup_download
         self.volume = 0.5
+        self.track_pos = 0  # Track position in seconds
+        self.is_playing = False
+        self.last_play_time = None
+        
 
         self.ydl_opts = {
             'format': 'bestaudio/best',
@@ -23,7 +28,7 @@ class MusicBox:
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
             }],
-            'progress_hooks': [self.yt_progress_hook]
+            'progress_hooks': [self.yt_progress_hook],
         }
         
         # self.path = os.path.dirname(os.path.abspath(__file__))
@@ -74,6 +79,8 @@ class MusicBox:
     def __setup_player(self):
         
         mixer.init()
+        mixer.music.set_volume(self.volume)
+        self.curr_pos = mixer.music.get_pos()
         
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=50, pady=25, sticky='nsew')
@@ -147,10 +154,19 @@ class MusicBox:
 
     def _download_thread(self, URLs):
         try:
+            # mixer.music.stop()
+            mixer.music.unload()
             with YoutubeDL(self.ydl_opts) as ydl:
                 error_code = ydl.download(URLs)
                 if error_code == 0:
                     self.root.after(0, self.status.set, 'Success!')
+                    path = './files'
+                    files = os.listdir(path)
+                    file = files[0]
+                    self.title.set(file)
+                    mixer.music.load(f'{path}/{file}')
+                    mixer.music.play()
+                    mixer.music.pause()
                 else:
                     self.root.after(0, self.status.set, f"Error code: {error_code}")
         except Exception as e:
@@ -158,33 +174,51 @@ class MusicBox:
 
     def prev(self, event):
         self.sld_progress.set(0)
-        mixer.music.play()
+        mixer.music.rewind()
     
     def play(self, event):
-        path = './files'
-        files = os.listdir(path)
-        file = files[0]
-        mixer.music.load(f'{path}/{file}')
-        mixer.music.set_volume(0.5)
-        mixer.music.play()
-        # mixer.music.pause()
-        # mixer.music.unpause()
-        # mixer.music.stop()
-    
+        if mixer.music.get_busy():
+            mixer.music.pause()
+            self.is_playing = False
+            # Update track_pos with elapsed time
+            if self.last_play_time:
+                self.track_pos += (mixer.music.get_pos() / 1000)
+        else:
+            mixer.music.unpause()
+            self.is_playing = True
+            self.last_play_time = time.time()
+
     def next(self, event):
         self.sld_progress.set(100)
+        # mixer.music.fadeout(1000) # may have ot swap for manual fade in/out as it blocks during fadeout
+        # mixer.music.stop()
 
     def ahead(self, event):
-        pass
+        # Update track_pos with elapsed time
+        if self.is_playing and self.last_play_time:
+            self.track_pos += (mixer.music.get_pos() / 1000)
+        self.track_pos += 5
+        mixer.music.set_pos(self.track_pos)
+        self.last_play_time = time.time()
 
     def behind(self, event):
-        pass
+        # Update track_pos with elapsed time
+        if self.is_playing and self.last_play_time:
+            self.track_pos += (mixer.music.get_pos() / 1000)
+        self.track_pos = max(self.track_pos - 5, 0)
+        if self.track_pos == 0:
+            mixer.music.rewind()
+        else:
+            mixer.music.set_pos(self.track_pos)
+        self.last_play_time = time.time()
 
     def volume_up(self, event):
-        mixer.music.set_volume(min(self.volume + 0.1, 1))
+        self.volume = min(self.volume + 0.1, 1)
+        mixer.music.set_volume(self.volume)
 
     def volume_down(self, event):
-        mixer.music.set_volume(min(self.volume - 0.1, 1))
+        self.volume = max(self.volume - 0.1, 1)
+        mixer.music.set_volume(self.volume)
 
 
 def main():
