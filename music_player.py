@@ -2,6 +2,8 @@ import os
 from tkinter import *
 from tkinter.ttk import *
 from pygame import mixer
+import mutagen
+from mutagen.mp3 import MP3
 import threading
 from yt_dlp import YoutubeDL
 import time
@@ -10,13 +12,22 @@ class MusicBox:
     
     def __init__(self, root):
         self.root = root
+        
+        # Download Frame
         self.status = None  # Will be set in __setup_download
         self.bar_progress = None  # Will be set in __setup_download
-        self.volume = 0.5
-        self.track_pos = 0  # Track position in seconds
+        
+        # Player Frame
+        self.path = os.path.dirname(os.path.abspath(__file__))
+        self.path += '/files'
+        self.files = os.listdir(self.path)
+        self.file = self.files[0]
+        self.audio_info = MP3(f'{self.path}/{self.file}').info
+        self.track_length = int(self.audio_info.length)
+        self.track_pos = 0  # Track position in ms
         self.is_playing = False
         self.last_play_time = None
-        
+        self.volume = 0.5
 
         self.ydl_opts = {
             'format': 'bestaudio/best',
@@ -28,10 +39,8 @@ class MusicBox:
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
             }],
-            'progress_hooks': [self.yt_progress_hook],
+            'progress_hooks': [self._yt_progress_hook],
         }
-        
-        # self.path = os.path.dirname(os.path.abspath(__file__))
 
         self.root = root
         root.configure(bg='medium purple')
@@ -80,7 +89,6 @@ class MusicBox:
         
         mixer.init()
         mixer.music.set_volume(self.volume)
-        self.curr_pos = mixer.music.get_pos()
         
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=50, pady=25, sticky='nsew')
@@ -92,13 +100,13 @@ class MusicBox:
         self.frm_player.rowconfigure(2, weight=1, minsize=100)
         
         
-        self.title = StringVar(self.frm_player, value="Foo Bar")
+        self.title = StringVar(self.frm_player, value='Foo Bar')
         self.lbl_title = Label(self.frm_player, textvariable=self.title)
         
-        self.progress = StringVar(self.frm_player, value="0:00")
+        self.progress = StringVar(self.frm_player, value='0:00:00')
         self.lbl_progress = Label(self.frm_player, textvariable=self.progress)
         self.sld_progress = Scale(self.frm_player, orient=HORIZONTAL, from_=0.0, to=100.0)
-        self.length = StringVar(self.frm_player, value="99:99")
+        self.length = StringVar(self.frm_player, value='99:99:99')
         self.lbl_length = Label(self.frm_player, textvariable=self.length)
         
         self.frm_buttons = Frame(self.frm_player)
@@ -106,42 +114,41 @@ class MusicBox:
         self.frm_buttons.columnconfigure(0, weight=1)
         self.frm_buttons.columnconfigure(1, weight=1)
         self.frm_buttons.columnconfigure(2, weight=1)
-        self.btn_prev = Button(self.frm_buttons, text="|<<")
-        self.btn_play = Button(self.frm_buttons, text=">/||")
-        self.btn_next = Button(self.frm_buttons, text=">>|")
-        # self.btn_shuffle = Button(self.frm_player, text="=x=")
+        self.btn_start = Button(self.frm_buttons, text='|<<')
+        self.btn_play = Button(self.frm_buttons, text='>/||')
+        self.btn_end = Button(self.frm_buttons, text='>>|')
+        # self.btn_shuffle = Button(self.frm_player, text='=x=')
         
         self.lbl_title.grid(row=0, column=1, padx=5, pady=10, sticky='n')
         self.lbl_progress.grid(row=1, column=0, padx=5, pady=10, sticky='e')
         self.sld_progress.grid(row=1, column=1, padx=5, pady=10, sticky='ew')
         self.lbl_length.grid(row=1, column=2, padx=5, pady=10, sticky='w')
         
-        self.btn_prev.grid(row=0, column=0, padx=5, pady=10, sticky='e')
+        self.btn_start.grid(row=0, column=0, padx=5, pady=10, sticky='e')
         self.btn_play.grid(row=0, column=1, padx=5, pady=10)
-        self.btn_next.grid(row=0, column=2, padx=5, pady=10, sticky='w')
+        self.btn_end.grid(row=0, column=2, padx=5, pady=10, sticky='w')
         
-        self.btn_prev.bind('<Button-1>', self.prev)
+        self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
-        self.btn_next.bind('<Button-1>', self.next)
+        self.btn_end.bind('<Button-1>', self.end)
         self.root.bind('<Key-space>', self.play)
-        self.root.bind('<Right>', self.ahead)
-        self.root.bind('<Left>', self.behind)
+        self.root.bind('<Right>', self.forward)
+        self.root.bind('<Left>', self.back)
         self.root.bind('<Up>', self.volume_up)
         self.root.bind('<Down>', self.volume_down)
-        self.root.bind('<KP_Home>', self.prev)
-        self.root.bind('<KP_End>', self.next)
+        self.root.bind('<KP_Home>', self.start)
+        self.root.bind('<KP_End>', self.end)
         
         mixer.music.stop()
         mixer.music.unload()
-        path = './files'
-        files = os.listdir(path)
-        file = files[0]
-        self.title.set(file)
-        mixer.music.load(f'{path}/{file}')
+        self.title.set(self.file)
+        mixer.music.load(f'{self.path}/{self.file}')
+        hours, mins, secs = self._get_track_len(self.track_length)
+        self.length.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.play()
         mixer.music.pause()
 
-    def yt_progress_hook(self, d):
+    def _yt_progress_hook(self, d):
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             downloaded_bytes = d.get('downloaded_bytes', 0)
@@ -149,10 +156,10 @@ class MusicBox:
                 percent = downloaded_bytes / total_bytes * 100
                 # Update progress bar in the main thread
                 self.root.after(0, lambda: self.bar_progress.config(value=percent))
-                self.root.after(0, lambda: self.status.set(f"Downloading... {percent:.1f}%"))
+                self.root.after(0, lambda: self.status.set(f'Downloading... {percent:.1f}%'))
         elif d['status'] == 'finished':
             self.root.after(0, lambda: self.bar_progress.config(value=100))
-            self.root.after(0, lambda: self.status.set("Download finished, processing..."))
+            self.root.after(0, lambda: self.status.set('Download finished, processing...'))
 
     def download(self, event):
         self.status.set('Preparing...')
@@ -164,62 +171,63 @@ class MusicBox:
 
     def _download_thread(self, URLs):
         try:
-            mixer.music.stop()
-            mixer.music.unload()
             with YoutubeDL(self.ydl_opts) as ydl:
                 error_code = ydl.download(URLs)
                 if error_code == 0:
                     self.root.after(0, self.status.set, 'Success!')
-                    path = './files'
-                    files = os.listdir(path)
-                    file = files[0]
-                    self.title.set(file)
-                    mixer.music.load(f'{path}/{file}')
-                    mixer.music.play()
-                    mixer.music.pause()
                 else:
-                    self.root.after(0, self.status.set, f"Error code: {error_code}")
+                    self.root.after(0, self.status.set, f'Error code: {error_code}')
         except Exception as e:
             self.root.after(0, self.status.set, f'Error: {e}')
 
-    def prev(self, event):
+    def start(self, event):
         self.sld_progress.set(0)
+        self.progress.set('0:00:00')
         mixer.music.rewind()
+        self.last_play_time = None
+        self.track_pos = 0
     
     def play(self, event):
         if mixer.music.get_busy():
             mixer.music.pause()
             self.is_playing = False
             if self.last_play_time:
-                self.track_pos += (mixer.music.get_pos() / 1000)
+                # Add elapsed time since last unpause to track_pos
+                self.track_pos += (time.time() - self.last_play_time)
+                self.last_play_time = None
         else:
             mixer.music.unpause()
             self.is_playing = True
             self.last_play_time = time.time()
-            self.start_progress_updater()  # Start updating progress
+            self._start_progress_updater()  # Start updating progress
 
-    def next(self, event):
+    def end(self, event):
         self.sld_progress.set(100)
-        # mixer.music.fadeout(1000) # may have ot swap for manual fade in/out as it blocks during fadeout
+        hours, mins, secs = self._get_track_len(self.track_length)
+        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        mixer.music.fadeout(1000) # may have ot swap for manual fade in/out as it blocks during fadeout
         # mixer.music.stop()
 
-    def ahead(self, event):
+    def forward(self, event):
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
             self.track_pos += (mixer.music.get_pos() / 1000)
         self.track_pos += 5
         mixer.music.set_pos(self.track_pos)
+        hours, mins, secs = self._get_track_len(self.track_pos)
+        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
         self.last_play_time = time.time()
 
-    def behind(self, event):
+    def back(self, event):
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
             self.track_pos += (mixer.music.get_pos() / 1000)
         self.track_pos = max(self.track_pos - 5, 0)
-        if self.track_pos == 0:
-            mixer.music.rewind()
-        else:
+        mixer.music.rewind()
+        if self.track_pos > 0:
             mixer.music.set_pos(self.track_pos)
+        hours, mins, secs = self._get_track_len(self.track_pos)
+        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
         self.last_play_time = time.time()
 
     def volume_up(self, event):
@@ -230,19 +238,29 @@ class MusicBox:
         self.volume = max(self.volume - 0.1, 1)
         mixer.music.set_volume(self.volume)
         
-    def start_progress_updater(self):
+    def _start_progress_updater(self):
         if self.is_playing:
             # Calculate current position
             if self.last_play_time:
-                elapsed = mixer.music.get_pos() / 1000
+                elapsed = time.time() - self.last_play_time
                 current_pos = self.track_pos + elapsed
             else:
                 current_pos = self.track_pos
-            mins = int(current_pos // 60)
-            secs = int(current_pos % 60)
-            self.progress.set(f'{mins}:{secs:02d}')
+            hours, mins, secs = self._get_track_len(current_pos)
+            self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+            # Update the scale value
+            self.sld_progress.set(100 * current_pos / self.track_length)
             # Schedule next update
-            self.root.after(1000, self.start_progress_updater)
+            self.root.after(100, self._start_progress_updater)
+
+    def _get_track_len(self, length):
+        hours = int(length // 3600)
+        length %= 3600
+        mins = int(length // 60)
+        length %= 60
+        secs = int(length)
+
+        return hours, mins, secs
 
 def main():
     
