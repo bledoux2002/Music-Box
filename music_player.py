@@ -41,11 +41,12 @@ class MusicBox:
                 'preferredcodec': 'mp3',
             }],
             'progress_hooks': [self._yt_progress_hook],
+            'nooverwrites': True,
         }
 
         self.root = root
         root.configure(bg='medium purple')
-        root.minsize(500, 500)
+        root.minsize(750, 500)
         self.root.title('Adaptive Music Box')
         
         self.style_default = Style()
@@ -54,11 +55,13 @@ class MusicBox:
         # self.style_default.configure(self.style_name)
         
         self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=0)
-        self.root.rowconfigure(1, weight=1)
+        self.root.rowconfigure(1, weight=1, minsize=100)
         
         self.__setup_download()
         self.__setup_player()
+        self.__setup_playlists()
         
     def __setup_download(self):
         self.frm_download = Frame(self.root, style=self.style_name)
@@ -92,7 +95,7 @@ class MusicBox:
         mixer.music.set_volume(self.volume.get())
         
         self.frm_player = Frame(self.root, style=self.style_name)
-        self.frm_player.grid(row=1, column=0, padx=50, pady=25, sticky='nsew')
+        self.frm_player.grid(row=1, column=0, padx=25, pady=25, sticky='nsew')
         self.frm_player.columnconfigure(0, weight=0, minsize=100)
         self.frm_player.columnconfigure(1, weight=1, minsize=200)
         self.frm_player.columnconfigure(2, weight=0, minsize=100)
@@ -122,7 +125,7 @@ class MusicBox:
         self.btn_end = Button(self.frm_buttons, text='>>|')
         # self.btn_shuffle = Button(self.frm_player, text='=x=')
         
-        self.lbl_title.grid(row=0, column=1, padx=5, pady=10, sticky='n')
+        self.lbl_title.grid(row=0, column=0, columnspan=3, padx=5, pady=10, sticky='n')
         self.lbl_progress.grid(row=1, column=0, padx=5, pady=10, sticky='e')
         self.sld_progress.grid(row=1, column=1, padx=5, pady=10, sticky='ew')
         self.lbl_length.grid(row=1, column=2, padx=5, pady=10, sticky='w')
@@ -132,7 +135,7 @@ class MusicBox:
         self.btn_end.grid(row=0, column=2, padx=5, pady=10, sticky='w')
         
         # Volume
-        self.frm_volume = Frame(self.frm_player, style=self.style_name)
+        self.frm_volume = Frame(self.frm_player)
         self.frm_volume.grid(row=2, column=2, padx=10, pady=15, sticky='nse')
         self.frm_volume.columnconfigure(0, weight=1, minsize=20)
         self.frm_volume.rowconfigure(0, weight=1, minsize=100)
@@ -165,6 +168,25 @@ class MusicBox:
         mixer.music.play()
         mixer.music.pause()
 
+    def __setup_playlists(self):
+        self.frm_playlist = Frame(self.root, style=self.style_name)
+        self.frm_playlist.grid(row=1, column=1, padx=25, pady=25, sticky='nsew')
+        
+        self.frm_playlist.columnconfigure(0, weight=1, minsize=100)
+        self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
+        self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
+        
+        self.playlist = StringVar(self.frm_playlist, value='Exploration')
+        self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.playlist)
+        self.cb_playlists['values'] = ('Exploration', 'Combat')
+        # self.lb_tracks = Listbox(self.frm_playlist, height=10)
+        self.lb_tracks = Listbox(self.frm_playlist)
+        
+        self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
+        self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
+        
+        self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+
     def _yt_progress_hook(self, d):
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
@@ -180,6 +202,12 @@ class MusicBox:
 
     def download(self, event):
         self.status.set('Preparing...')
+        if mixer.music.get_busy():
+            mixer.music.stop()
+        try:
+            mixer.music.unload()
+        except Exception as e:
+            print(f'Error unloading music: {e}')
         self.bar_progress.config(value=0)
         url = self.ent_url.get()
         URLs = [url]
@@ -300,8 +328,10 @@ class MusicBox:
 
         return hours, mins, secs
 
+    def change_playlist(self, event):
+        print(self.playlist.get())
+
 def main():
-    
     root = Tk()
     MusicBox(root)
     root.mainloop()
