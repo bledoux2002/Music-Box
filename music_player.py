@@ -27,7 +27,8 @@ class MusicBox:
         self.track_pos = 0  # Track position in ms
         self.is_playing = False
         self.last_play_time = None
-        self.volume = 0.5
+        self.volume = DoubleVar()
+        self.volume.set(0.5)
 
         self.ydl_opts = {
             'format': 'bestaudio/best',
@@ -88,7 +89,7 @@ class MusicBox:
     def __setup_player(self):
         
         mixer.init()
-        mixer.music.set_volume(self.volume)
+        mixer.music.set_volume(self.volume.get())
         
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=50, pady=25, sticky='nsew')
@@ -109,11 +110,13 @@ class MusicBox:
         self.length = StringVar(self.frm_player, value='99:99:99')
         self.lbl_length = Label(self.frm_player, textvariable=self.length)
         
+        # Navigation
         self.frm_buttons = Frame(self.frm_player)
         self.frm_buttons.grid(row=2, column=1, padx=25, pady=15, sticky='nesw')
         self.frm_buttons.columnconfigure(0, weight=1)
         self.frm_buttons.columnconfigure(1, weight=1)
         self.frm_buttons.columnconfigure(2, weight=1)
+        
         self.btn_start = Button(self.frm_buttons, text='|<<')
         self.btn_play = Button(self.frm_buttons, text='>/||')
         self.btn_end = Button(self.frm_buttons, text='>>|')
@@ -127,6 +130,20 @@ class MusicBox:
         self.btn_start.grid(row=0, column=0, padx=5, pady=10, sticky='e')
         self.btn_play.grid(row=0, column=1, padx=5, pady=10)
         self.btn_end.grid(row=0, column=2, padx=5, pady=10, sticky='w')
+        
+        # Volume
+        self.frm_volume = Frame(self.frm_player, style=self.style_name)
+        self.frm_volume.grid(row=2, column=2, padx=10, pady=15, sticky='nse')
+        self.frm_volume.columnconfigure(0, weight=1, minsize=20)
+        self.frm_volume.rowconfigure(0, weight=1, minsize=100)
+        self.frm_volume.rowconfigure(1, weight=0, minsize=10)
+        
+        self.sld_volume = Scale(self.frm_volume, orient=VERTICAL, from_=1, to=0, variable=self.volume, command=self.update_volume)
+        self.str_volume = StringVar(self.frm_volume, value=(int(100 * self.volume.get())))
+        self.lbl_volume = Label(self.frm_volume, textvariable=self.str_volume)
+        
+        self.sld_volume.grid(row=0, column=0, padx=10, pady=5, sticky='nsw')
+        self.lbl_volume.grid(row=1, column=0, padx=5, pady=5, sticky='n')
         
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
@@ -239,12 +256,18 @@ class MusicBox:
             self.last_play_time = None
 
     def volume_up(self, event):
-        self.volume = min(self.volume + 0.1, 1)
-        mixer.music.set_volume(self.volume)
+        self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
+        mixer.music.set_volume(self.volume.get())
+        self.str_volume.set(int(100 * self.volume.get()))
 
     def volume_down(self, event):
-        self.volume = max(self.volume - 0.1, 1)
-        mixer.music.set_volume(self.volume)
+        self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
+        mixer.music.set_volume(self.volume.get())
+        self.str_volume.set(int(100 * self.volume.get()))
+    
+    def update_volume(self, val):
+        mixer.music.set_volume(self.volume.get())
+        self.str_volume.set(int(float(val) * 100))
         
     def _start_progress_updater(self):
         if self.is_playing:
