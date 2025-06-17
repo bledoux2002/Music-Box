@@ -11,25 +11,33 @@ import time
 class MusicBox:
     
     def __init__(self, root):
-        self.root = root
-        
-        # Download Frame
-        self.status = None  # Will be set in __setup_download
-        self.bar_progress = None  # Will be set in __setup_download
-        
-        # Player Frame
+        # Directory Information
         self.path = os.path.dirname(os.path.abspath(__file__))
-        self.path += '/files'
+        self.filepath = self.path + '/files'
+        print(self.filepath)
         self.files = os.listdir(self.path)
-        self.file = self.files[0]
-        self.audio_info = MP3(f'{self.path}/{self.file}').info
+        
+        # Current Track and Playlist
+        self.track_name = self.files[0] # change to only name
+        self.filename = self.files[0]
+        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
         self.track_length = int(self.audio_info.length)
         self.track_pos = 0  # Track position in ms
         self.is_playing = False
         self.last_play_time = None
         self.volume = DoubleVar()
         self.volume.set(0.5)
+        
+        self.all_tracks = Playlist('All')
+        for track in self.files:
+            self.all_tracks.add_track(track, track) # change to names
+        self.playlists = []
+        for i in range(10): #change to have their own names saved in json file (each listed under playlistN has a name att and the dict of tracks)
+            self.playlists.append(Playlist(f'Playlist {i}'))
 
+        self.playlist = self.all_tracks
+
+        # YT_DLP Options
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'windowsFilenames': True,
@@ -44,26 +52,30 @@ class MusicBox:
             'nooverwrites': True,
         }
 
+        # TKinter Setup
         self.root = root
         root.configure(bg='medium purple')
         root.minsize(750, 500)
         self.root.title('Adaptive Music Box')
         
-        self.style_default = Style()
-        self.style_name = 'Outlined.TFrame'
-        self.style_default.configure(self.style_name, borderwidth=2, relief='solid')
-        # self.style_default.configure(self.style_name)
+        self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
+        self.style_default = Style(self.style_name, borderwidth=2, relief='solid')
         
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=0)
         self.root.rowconfigure(1, weight=1, minsize=100)
         
+        # Frame Setups
         self.__setup_download()
         self.__setup_player()
         self.__setup_playlists()
         
+    
     def __setup_download(self):
+        '''
+        Sets up the Download Frame
+        '''
         self.frm_download = Frame(self.root, style=self.style_name)
         self.frm_download.grid(row=0, column=0, padx=50, pady=25, sticky='new')
         self.frm_download.columnconfigure(0, weight=0, minsize=10)
@@ -78,8 +90,8 @@ class MusicBox:
         self.ent_url.insert(0, 'https://youtu.be/FcaHJDj6KEE')
         self.btn_url = Button(self.frm_download, text='Download')
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
-        self.status = StringVar(self.frm_download, value='Please enter a URL')
-        self.lbl_status = Label(self.frm_download, textvariable=self.status)
+        self.var_status = StringVar(self.frm_download, value='Please enter a URL')
+        self.lbl_status = Label(self.frm_download, textvariable=self.var_status)
         
         self.lbl_url.grid(row=0, column=0, padx=5, pady=5, sticky='w')
         self.ent_url.grid(row=0, column=1, sticky='ew')
@@ -90,7 +102,9 @@ class MusicBox:
         self.btn_url.bind('<Button-1>', self.download)
 
     def __setup_player(self):
-        
+        '''
+        Sets up track Player Frame
+        '''
         mixer.init()
         mixer.music.set_volume(self.volume.get())
         
@@ -104,14 +118,14 @@ class MusicBox:
         self.frm_player.rowconfigure(2, weight=1, minsize=100)
         
         
-        self.title = StringVar(self.frm_player, value='Foo Bar')
-        self.lbl_title = Label(self.frm_player, textvariable=self.title)
+        self.var_title = StringVar(self.frm_player, value='Foo Bar')
+        self.lbl_title = Label(self.frm_player, textvariable=self.var_title)
         
-        self.progress = StringVar(self.frm_player, value='0:00:00')
-        self.lbl_progress = Label(self.frm_player, textvariable=self.progress)
+        self.var_progress = StringVar(self.frm_player, value='0:00:00')
+        self.lbl_progress = Label(self.frm_player, textvariable=self.var_progress)
         self.sld_progress = Scale(self.frm_player, orient=HORIZONTAL, from_=0.0, to=100.0)
-        self.length = StringVar(self.frm_player, value='99:99:99')
-        self.lbl_length = Label(self.frm_player, textvariable=self.length)
+        self.var_length = StringVar(self.frm_player, value='99:99:99')
+        self.lbl_length = Label(self.frm_player, textvariable=self.var_length)
         
         # Navigation
         self.frm_buttons = Frame(self.frm_player)
@@ -142,11 +156,48 @@ class MusicBox:
         self.frm_volume.rowconfigure(1, weight=0, minsize=10)
         
         self.sld_volume = Scale(self.frm_volume, orient=VERTICAL, from_=1, to=0, variable=self.volume, command=self.update_volume)
-        self.str_volume = StringVar(self.frm_volume, value=(int(100 * self.volume.get())))
-        self.lbl_volume = Label(self.frm_volume, textvariable=self.str_volume)
+        self.var_volume = StringVar(self.frm_volume, value=(int(100 * self.volume.get())))
+        self.lbl_volume = Label(self.frm_volume, textvariable=self.var_volume)
         
         self.sld_volume.grid(row=0, column=0, padx=10, pady=5, sticky='nsw')
         self.lbl_volume.grid(row=1, column=0, padx=5, pady=5, sticky='n')
+        
+        # Playlist with Scrollbar
+        self.frm_playlists = Frame(self.frm_player, style=self.style_name)
+        self.frm_playlists.grid(row=2, column=0, padx=10, pady=15, sticky='nw')
+        self.frm_playlists.columnconfigure(0, weight=1)
+        self.frm_playlists.rowconfigure(0, weight=1)
+
+        # Canvas and Scrollbar for scrolling checkbuttons
+        self.cnv_playlists = Canvas(self.frm_playlists, borderwidth=0, highlightthickness=0, width= 100, height=180)
+        self.scrollbar_playlists = Scrollbar(self.frm_playlists, orient=VERTICAL, command=self.cnv_playlists.yview)
+        self.cnv_playlists.configure(yscrollcommand=self.scrollbar_playlists.set)
+
+        self.cnv_playlists.grid(row=0, column=0, sticky='nsew')
+        self.scrollbar_playlists.grid(row=0, column=1, sticky='ns')
+
+        # Frame inside canvas to hold checkbuttons
+        self.inner_playlists = Frame(self.cnv_playlists)
+        self.cnv_playlists.create_window((0, 0), window=self.inner_playlists, anchor='nw')
+
+        self.playlist_var_names = []
+        self.cbtn_playlists = []
+        self.var_playlists = []
+        for i in range(10):
+            self.playlist_var_names.append(StringVar(self.inner_playlists, value=self.playlists[i].name))
+            self.var_playlists.append(Variable(self.inner_playlists, value=-i-1))
+            self.cbtn_playlists.append(Checkbutton(self.inner_playlists, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
+            self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
+
+        # Update scrollregion when widgets are added
+        def _on_frame_configure(event):
+            self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox("all"))
+        self.inner_playlists.bind("<Configure>", _on_frame_configure)
+
+        # Optional: enable mousewheel scrolling
+        def _on_mousewheel(event):
+            self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.cnv_playlists.bind_all("<MouseWheel>", _on_mousewheel)
         
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
@@ -161,14 +212,17 @@ class MusicBox:
         
         mixer.music.stop()
         mixer.music.unload()
-        self.title.set(self.file)
-        mixer.music.load(f'{self.path}/{self.file}')
+        self.var_title.set(self.filename)
+        mixer.music.load(f'{self.path}/{self.filename}')
         hours, mins, secs = self._get_track_len(self.track_length)
-        self.length.set(f'{hours}:{mins:02}:{secs:02}')
+        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.play()
         mixer.music.pause()
 
     def __setup_playlists(self):
+        '''
+        Sets up Playlists Frame
+        '''
         self.frm_playlist = Frame(self.root, style=self.style_name)
         self.frm_playlist.grid(row=1, column=1, padx=25, pady=25, sticky='nsew')
         
@@ -176,11 +230,13 @@ class MusicBox:
         self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
         self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
         
-        self.playlist = StringVar(self.frm_playlist, value='Exploration')
+        self.var_playlist = StringVar(self.frm_playlist, value='Explore')
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.playlist)
-        self.cb_playlists['values'] = ('Exploration', 'Combat')
+        self.cb_playlists['values'] = (playlist.name for playlist in self.playlists)
         # self.lb_tracks = Listbox(self.frm_playlist, height=10)
         self.lb_tracks = Listbox(self.frm_playlist)
+        for track in self.playlist.get_tracknames():
+            self.lb_tracks.insert(track)
         
         self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
@@ -195,13 +251,13 @@ class MusicBox:
                 percent = downloaded_bytes / total_bytes * 100
                 # Update progress bar in the main thread
                 self.root.after(0, lambda: self.bar_progress.config(value=percent))
-                self.root.after(0, lambda: self.status.set(f'Downloading... {percent:.1f}%'))
+                self.root.after(0, lambda: self.var_status.set(f'Downloading... {percent:.1f}%'))
         elif d['status'] == 'finished':
             self.root.after(0, lambda: self.bar_progress.config(value=100))
-            self.root.after(0, lambda: self.status.set('Download finished, processing...'))
+            self.root.after(0, lambda: self.var_status.set('Download finished, processing...'))
 
     def download(self, event):
-        self.status.set('Preparing...')
+        self.var_status.set('Preparing...')
         if mixer.music.get_busy():
             mixer.music.stop()
         try:
@@ -217,17 +273,18 @@ class MusicBox:
     def _download_thread(self, URLs):
         try:
             with YoutubeDL(self.ydl_opts) as ydl:
-                error_code = ydl.download(URLs)
-                if error_code == 0:
-                    self.root.after(0, self.status.set, 'Success!')
-                else:
-                    self.root.after(0, self.status.set, f'Error code: {error_code}')
+                for url in URLs:
+                    info = ydl.extract_info(url, download=True)  # Don't download yet
+                    filename = ydl.prepare_filename(info)
+                    print(f'Will save as: {filename}')
+                    self.all_music.add_track('test', filename)
+                    self.root.after(0, self.var_status.set, 'Success!')
         except Exception as e:
-            self.root.after(0, self.status.set, f'Error: {e}')
+            self.root.after(0, self.var_status.set, f'Error: {e}')
 
     def start(self, event):
         self.sld_progress.set(0)
-        self.progress.set('0:00:00')
+        self.var_progress.set('0:00:00')
         mixer.music.rewind()
         self.last_play_time = None
         self.track_pos = 0
@@ -249,7 +306,7 @@ class MusicBox:
     def end(self, event):
         self.sld_progress.set(100)
         hours, mins, secs = self._get_track_len(self.track_length)
-        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.fadeout(1000) # may have ot swap for manual fade in/out as it blocks during fadeout
         # mixer.music.stop()
 
@@ -261,7 +318,7 @@ class MusicBox:
         mixer.music.rewind()
         mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
-        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
         self.sld_progress.set(100 * self.track_pos / self.track_length)
         if self.is_playing:
             self.last_play_time = time.time()
@@ -276,7 +333,7 @@ class MusicBox:
         mixer.music.rewind()
         mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
-        self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
         self.sld_progress.set(100 * self.track_pos / self.track_length)
         if self.is_playing:
             self.last_play_time = time.time()
@@ -286,16 +343,16 @@ class MusicBox:
     def volume_up(self, event):
         self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
         mixer.music.set_volume(self.volume.get())
-        self.str_volume.set(int(100 * self.volume.get()))
+        self.var_volume.set(int(100 * self.volume.get()))
 
     def volume_down(self, event):
         self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
         mixer.music.set_volume(self.volume.get())
-        self.str_volume.set(int(100 * self.volume.get()))
+        self.var_volume.set(int(100 * self.volume.get()))
     
     def update_volume(self, val):
         mixer.music.set_volume(self.volume.get())
-        self.str_volume.set(int(float(val) * 100))
+        self.var_volume.set(int(float(val) * 100))
         
     def _start_progress_updater(self):
         if self.is_playing:
@@ -304,7 +361,7 @@ class MusicBox:
                 self.is_playing = False
                 self.track_pos = self.track_length
                 hours, mins, secs = self._get_track_len(self.track_length)
-                self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+                self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
                 self.sld_progress.set(100)
                 return
             # Calculate current position
@@ -314,7 +371,7 @@ class MusicBox:
             else:
                 current_pos = self.track_pos
             hours, mins, secs = self._get_track_len(current_pos)
-            self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+            self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
             self.sld_progress.set(100 * current_pos / self.track_length)
             # Schedule next update
             self.root.after(100, self._start_progress_updater)
@@ -330,6 +387,51 @@ class MusicBox:
 
     def change_playlist(self, event):
         print(self.playlist.get())
+        
+    def toggle_playlist(self, val):
+        if val >=0:
+            self.playlists[val].add_track(self.track_name, self.file)
+        else:
+            self.playlists[-val-1].remove_track(self.track_name)
+        self._update_playlist(val)
+    
+    def _update_playlist(self, num): #update playlist frame
+        if num >=0:
+            pass
+        else:
+            pass
+
+class Playlist:
+    
+    def __init__(self, name):
+        self.name = name
+        self.tracks = {
+            'name': 'filename.mp3'
+        }
+        
+    def set_name(self, name):
+        self.name = name
+        
+    def add_track(self, name, file):
+        self.tracks[name] = file
+        
+    def remove_track(self, name):
+        del self.tracks[name]
+
+    def get_tracknames(self):
+        names = []
+        for name, _ in self.tracks.items:
+            names.append[name]
+        return names
+    
+    def get_tracks(self):
+        tracks = []
+        for _, track in self.tracks.items:
+            tracks.append[track]
+        return tracks
+    
+    def get_track(self, name):
+        return self.tracks[name]
 
 def main():
     root = Tk()
