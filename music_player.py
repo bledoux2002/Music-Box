@@ -211,24 +211,30 @@ class MusicBox:
     def forward(self, event):
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
-            self.track_pos += (mixer.music.get_pos() / 1000)
-        self.track_pos += 5
+            self.track_pos += (time.time() - self.last_play_time)
+        self.track_pos = min(self.track_pos + 5, self.track_length)
+        mixer.music.rewind()
         mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
         self.progress.set(f'{hours}:{mins:02}:{secs:02}')
-        self.last_play_time = time.time()
+        if self.is_playing:
+            self.last_play_time = time.time()
+        else:
+            self.last_play_time = None
 
     def back(self, event):
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
-            self.track_pos += (mixer.music.get_pos() / 1000)
+            self.track_pos += (time.time() - self.last_play_time)
         self.track_pos = max(self.track_pos - 5, 0)
         mixer.music.rewind()
-        if self.track_pos > 0:
-            mixer.music.set_pos(self.track_pos)
+        mixer.music.set_pos(self.track_pos)
         hours, mins, secs = self._get_track_len(self.track_pos)
         self.progress.set(f'{hours}:{mins:02}:{secs:02}')
-        self.last_play_time = time.time()
+        if self.is_playing:
+            self.last_play_time = time.time()
+        else:
+            self.last_play_time = None
 
     def volume_up(self, event):
         self.volume = min(self.volume + 0.1, 1)
@@ -240,6 +246,14 @@ class MusicBox:
         
     def _start_progress_updater(self):
         if self.is_playing:
+            if not mixer.music.get_busy():
+                # Playback finished
+                self.is_playing = False
+                self.track_pos = self.track_length
+                hours, mins, secs = self._get_track_len(self.track_length)
+                self.progress.set(f'{hours}:{mins:02}:{secs:02}')
+                self.sld_progress.set(100)
+                return
             # Calculate current position
             if self.last_play_time:
                 elapsed = time.time() - self.last_play_time
@@ -248,7 +262,6 @@ class MusicBox:
                 current_pos = self.track_pos
             hours, mins, secs = self._get_track_len(current_pos)
             self.progress.set(f'{hours}:{mins:02}:{secs:02}')
-            # Update the scale value
             self.sld_progress.set(100 * current_pos / self.track_length)
             # Schedule next update
             self.root.after(100, self._start_progress_updater)
