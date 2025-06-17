@@ -17,16 +17,16 @@ class MusicBox:
         print(self.filepath)
         self.files = os.listdir(self.filepath)
 
-        # Current Track and Playlist
-        self.track_name = self.files[0] # change to only name
-        self.filename = self.files[0]
-        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
-        self.track_length = int(self.audio_info.length)
-        self.track_pos = 0  # Track position in ms
-        self.is_playing = False
-        self.last_play_time = None
+        # Mixer
+        # add 2 channels for fade in/out
+        mixer.init()
         self.volume = DoubleVar()
         self.volume.set(0.5)
+        mixer.music.set_volume(self.volume.get())
+
+        # Current Track and Playlist
+        self.filename = self.files[0]
+        self.track_name = self._clean_filename(self.filename)
 
         self.all_tracks = Playlist('All')
         for track in self.files:
@@ -73,6 +73,8 @@ class MusicBox:
         self.__setup_download()
         self.__setup_player()
         self.__setup_playlists()
+        
+        self.play_track(self.track_name)
 
     def __setup_download(self):
         '''
@@ -107,12 +109,6 @@ class MusicBox:
         '''
         Sets up track Player Frame
         '''
-
-        # pygame Mixer
-        # Eventually add 2 channels to fade music in and out with each other
-        mixer.init()
-        mixer.music.set_volume(self.volume.get())
-
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=25, pady=25, sticky='nsew')
         self.frm_player.columnconfigure(0, weight=0, minsize=100)
@@ -207,15 +203,6 @@ class MusicBox:
         self.cnv_playlists.bind("<Enter>", self._bind_mousewheel)
         self.cnv_playlists.bind("<Leave>", self._unbind_mousewheel)
 
-        mixer.music.stop()
-        mixer.music.unload()
-        self.var_title.set(self.filename)
-        mixer.music.load(f'{self.filepath}/{self.filename}')
-        hours, mins, secs = self._get_track_len(self.track_length)
-        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.play()
-        mixer.music.pause()
-
     def __setup_playlists(self):
         '''
         Sets up Playlists Frame
@@ -240,6 +227,8 @@ class MusicBox:
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+        self.lb_tracks.bind('<<ListboxSelect>>', lambda e: self.queue_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+        self.lb_tracks.bind("<Double-1>", lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
     def remove_focus(self, event):
         self.root.focus_set()
@@ -399,6 +388,28 @@ class MusicBox:
 
     def _unbind_mousewheel(self, event):
         self.cnv_playlists.unbind_all("<MouseWheel>")
+
+    def queue_track(self, name):
+        pass
+
+    def play_track(self, name):
+        print(name)
+        self.track_name = name
+        self.filename = self.playlist.get_track(name)
+        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
+        self.track_length = int(self.audio_info.length)
+        self.track_pos = 0  # Track position in ms
+        self.is_playing = False
+        self.last_play_time = None
+
+        mixer.music.stop()
+        mixer.music.unload()
+        self.var_title.set(self.track_name)
+        mixer.music.load(f'{self.filepath}/{self.filename}')
+        hours, mins, secs = self._get_track_len(self.track_length)
+        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
+        mixer.music.play()
+        mixer.music.pause()
 
     def change_playlist(self, event):
         print(self.var_playlist.get())
