@@ -130,6 +130,16 @@ class MusicBox:
         self.root.bind('<Down>', self.volume_down)
         self.root.bind('<KP_Home>', self.prev)
         self.root.bind('<KP_End>', self.next)
+        
+        mixer.music.stop()
+        mixer.music.unload()
+        path = './files'
+        files = os.listdir(path)
+        file = files[0]
+        self.title.set(file)
+        mixer.music.load(f'{path}/{file}')
+        mixer.music.play()
+        mixer.music.pause()
 
     def yt_progress_hook(self, d):
         if d['status'] == 'downloading':
@@ -154,7 +164,7 @@ class MusicBox:
 
     def _download_thread(self, URLs):
         try:
-            # mixer.music.stop()
+            mixer.music.stop()
             mixer.music.unload()
             with YoutubeDL(self.ydl_opts) as ydl:
                 error_code = ydl.download(URLs)
@@ -180,13 +190,13 @@ class MusicBox:
         if mixer.music.get_busy():
             mixer.music.pause()
             self.is_playing = False
-            # Update track_pos with elapsed time
             if self.last_play_time:
                 self.track_pos += (mixer.music.get_pos() / 1000)
         else:
             mixer.music.unpause()
             self.is_playing = True
             self.last_play_time = time.time()
+            self.start_progress_updater()  # Start updating progress
 
     def next(self, event):
         self.sld_progress.set(100)
@@ -219,7 +229,20 @@ class MusicBox:
     def volume_down(self, event):
         self.volume = max(self.volume - 0.1, 1)
         mixer.music.set_volume(self.volume)
-
+        
+    def start_progress_updater(self):
+        if self.is_playing:
+            # Calculate current position
+            if self.last_play_time:
+                elapsed = mixer.music.get_pos() / 1000
+                current_pos = self.track_pos + elapsed
+            else:
+                current_pos = self.track_pos
+            mins = int(current_pos // 60)
+            secs = int(current_pos % 60)
+            self.progress.set(f'{mins}:{secs:02d}')
+            # Schedule next update
+            self.root.after(1000, self.start_progress_updater)
 
 def main():
     
