@@ -1,6 +1,7 @@
 import os
 from tkinter import *
 from tkinter.ttk import *
+from pygame import mixer
 import threading
 from yt_dlp import YoutubeDL
 
@@ -10,12 +11,13 @@ class MusicBox:
         self.root = root
         self.status = None  # Will be set in __setup_download
         self.bar_progress = None  # Will be set in __setup_download
+        self.volume = 0.5
 
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'windowsFilenames': True,
             'paths': {
-                'home': './sound/files',
+                'home': './files',
             },
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -70,6 +72,9 @@ class MusicBox:
         self.btn_url.bind('<Button-1>', self.download)
 
     def __setup_player(self):
+        
+        mixer.init()
+        
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=50, pady=25, sticky='nsew')
         self.frm_player.columnconfigure(0, weight=0, minsize=100)
@@ -111,6 +116,13 @@ class MusicBox:
         self.btn_prev.bind('<Button-1>', self.prev)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_next.bind('<Button-1>', self.next)
+        self.root.bind('<Key-space>', self.play)
+        self.root.bind('<Right>', self.ahead)
+        self.root.bind('<Left>', self.behind)
+        self.root.bind('<Up>', self.volume_up)
+        self.root.bind('<Down>', self.volume_down)
+        self.root.bind('<KP_Home>', self.prev)
+        self.root.bind('<KP_End>', self.next)
 
     def yt_progress_hook(self, d):
         if d['status'] == 'downloading':
@@ -146,12 +158,34 @@ class MusicBox:
 
     def prev(self, event):
         self.sld_progress.set(0)
+        mixer.music.play()
     
     def play(self, event):
-        video = None
+        path = './files'
+        files = os.listdir(path)
+        file = files[0]
+        mixer.music.load(f'{path}/{file}')
+        mixer.music.set_volume(0.5)
+        mixer.music.play()
+        # mixer.music.pause()
+        # mixer.music.unpause()
+        # mixer.music.stop()
     
     def next(self, event):
         self.sld_progress.set(100)
+
+    def ahead(self, event):
+        pass
+
+    def behind(self, event):
+        pass
+
+    def volume_up(self, event):
+        mixer.music.set_volume(min(self.volume + 0.1, 1))
+
+    def volume_down(self, event):
+        mixer.music.set_volume(min(self.volume - 0.1, 1))
+
 
 def main():
     
