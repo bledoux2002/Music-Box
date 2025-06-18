@@ -1,36 +1,14 @@
 {
     "volume": 1.0,
     "fade": 1000,
-    "current track": "Fallout 4 Main Theme [_yGpoRbwe4s].mp3",
-    "shuffle": true,
-    "playlist": "Playlist 3",
+    "current track": "",
+    "shuffle": false,
+    "playlist": "All",
     "playlists": {
-        "Combat": [
-            "Combat Ready [-9AC7OTdTJA].mp3",
-            "War in the Wastes [2D3bgpEgKZY].mp3",
-            "Time to Die [rKmPvixiIDQ].mp3",
-            "No Quarter [A5ZKSGaEz_A].mp3",
-            "The Warlord [HHlIWhNkKTM].mp3",
-            "V.A.T.S. or Die [-Li7jDDq01M].mp3",
-            "Only One Survives [Rm5IyV4_D88].mp3",
-            "A Critical Chance [46XqSacg4IU].mp3",
-            "We Are Unstoppable [U8Hw14ctEO8].mp3",
-            "Enough Is Enough [Egzkjb0zOow].mp3",
-            "Rise and Prevail [H32IT74oRSk].mp3",
-            "Dominant Species [FcaHJDj6KEE].mp3"
-        ],
-        "Sneaking": [
-            "The Infiltrator [65TVchbuUBU].mp3",
-            "Regrouped, Reloaded [9_PcZru2Zz4].mp3",
-            "Standoff [mjm_N6jkdRQ].mp3",
-            "Predator and Prey [8Wo5odZ1j9s].mp3"
-        ],
+        "Combat": [],
+        "Sneaking": [],
         "Exploration": [],
-        "Playlist 3": [
-            "The Commonwealth [FLtN8PekdXI].mp3",
-            "Fallout 4 Main Theme [_yGpoRbwe4s].mp3",
-            "Dominant Species [FcaHJDj6KEE].mp3"
-        ],
+        "Playlist 3": [],
         "Playlist 4": [],
         "Playlist 5": [],
         "Playlist 6": [],
