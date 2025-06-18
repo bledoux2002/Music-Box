@@ -16,6 +16,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
 
 ### __Prerequisites__
 
+- Windows machine
 - Python 3.10+
 - [ffmpeg](https://ffmpeg.org/) (required for YouTube downloads)
 - The following Python packages (install with `pip install -r requirements.txt`):
@@ -72,3 +73,4 @@ Run executable within a folder (files and settings will be stored here)
 ## Future Plans
 - Changing track names iin the Listbox similarly to chaning playlist names
 - Changing the current playlist using number keys.
+- Support for non-Windows machines
