@@ -62,8 +62,8 @@ class MusicBox:
 
         # Setup Frames
         self.__setup_download_frame()
-        self.__setup_player_frame()
         self.__setup_playlists_frame()
+        self.__setup_player_frame()
         
         # YT_DLP Options
         self.ydl_opts = {
@@ -81,6 +81,7 @@ class MusicBox:
         }
         
         self.play_track(self.track_name)
+        self.play(None)
 
     def __setup_download_frame(self):
         '''
@@ -479,6 +480,7 @@ class MusicBox:
         mixer.music.play()
         mixer.music.pause()
         self.start(None)
+        self.play(None)
 
     def change_playlist(self, event):
         # print(self.var_playlist.get())
