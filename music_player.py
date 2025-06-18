@@ -27,34 +27,6 @@ class MusicBox:
         self.volume.set(1.0)
         mixer.music.set_volume(self.volume.get())
 
-        # Current Track and Playlist
-        self.filename = self.files[0]
-        self.track_name = self._clean_filename(self.filename)
-
-        self.all_tracks = Playlist('All')
-        for track in self.files:
-            self.all_tracks.add_track(self._clean_filename(track), track)
-        self.playlists = []
-        for i in range(10): #change to have their own names saved in json file (each listed under playlistN has a name att and the dict of tracks)
-            self.playlists.append(Playlist(f'Playlist {i}'))
-
-        self.playlist = self.all_tracks
-
-        # YT_DLP Options
-        self.ydl_opts = {
-            'format': 'bestaudio/best',
-            'windowsFilenames': True,
-            'paths': {
-                'home': './files',
-            },
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-            }],
-            'progress_hooks': [self._yt_progress_hook],
-            'nooverwrites': True,
-        }
-
         # TKinter Setup
         self.root = root
         root.configure(bg='medium purple')
@@ -74,15 +46,39 @@ class MusicBox:
         
         self.progress_bar_in_use = False
 
-        # Frame Setups
+        self.all_tracks = Playlist('All')
+        for track in self.files:
+            self.all_tracks.add_track(self._clean_filename(track), track)
+
+        # Setups
         self.__load_settings()
-        self.__setup_download()
-        self.__setup_player()
         self.__setup_playlists()
+        self.__setup_download_frame()
+        self.__setup_player_frame()
+        self.__setup_playlists_frame()
+        
+        # Current Track and Playlist
+        self.filename = self.playlist.get_tracks()[0]
+        self.track_name = self._clean_filename(self.filename)
+
+        # YT_DLP Options
+        self.ydl_opts = {
+            'format': 'bestaudio/best',
+            'windowsFilenames': True,
+            'paths': {
+                'home': './files',
+            },
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+            }],
+            'progress_hooks': [self._yt_progress_hook],
+            'nooverwrites': True,
+        }
         
         self.play_track(self.track_name)
 
-    def __setup_download(self):
+    def __setup_download_frame(self):
         '''
         Sets up the Download Frame
         '''
@@ -111,7 +107,7 @@ class MusicBox:
 
         self.btn_url.bind('<Button-1>', self.download)
 
-    def __setup_player(self):
+    def __setup_player_frame(self):
         '''
         Sets up track Player Frame
         '''
@@ -183,17 +179,19 @@ class MusicBox:
         self.scrollbar_playlists.grid(row=0, column=1, sticky='ns')
 
         # Frame inside canvas to hold checkbuttons
-        self.inner_playlists = Frame(self.cnv_playlists)
-        self.cnv_playlists.create_window((0, 0), window=self.inner_playlists, anchor='nw')
+        self.frm_playlists_inner = Frame(self.cnv_playlists)
+        self.cnv_playlists.create_window((0, 0), window=self.frm_playlists_inner, anchor='nw')
 
         self.playlist_var_names = []
         self.cbtn_playlists = []
         self.var_playlists = []
-        for i in range(10):
-            self.playlist_var_names.append(StringVar(self.inner_playlists, value=self.playlists[i].name))
-            self.var_playlists.append(Variable(self.inner_playlists, value=-i-1))
-            self.cbtn_playlists.append(Checkbutton(self.inner_playlists, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
+        i = 0
+        for playlist_name, playlist_tracks in self.playlists.items():
+            self.playlist_var_names.append(StringVar(self.frm_playlists_inner, value=playlist_name))
+            self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
+            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
+            i += 1
 
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
@@ -207,11 +205,11 @@ class MusicBox:
         self.root.bind('<Down>', self.volume_down)
         self.root.bind('<KP_Home>', self.start)
         self.root.bind('<KP_End>', self.end)
-        self.inner_playlists.bind("<Configure>", self._on_frame_configure)
+        self.frm_playlists_inner.bind("<Configure>", self._on_frame_configure)
         self.cnv_playlists.bind("<Enter>", self._bind_mousewheel)
         self.cnv_playlists.bind("<Leave>", self._unbind_mousewheel)
 
-    def __setup_playlists(self):
+    def __setup_playlists_frame(self):
         '''
         Sets up Playlists Frame
         '''
@@ -224,7 +222,7 @@ class MusicBox:
 
         self.var_playlist = StringVar(self.frm_playlist, value=self.all_tracks.name)
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
-        self.cb_playlists['values'] = tuple([self.all_tracks.name]) + tuple(playlist.name for playlist in self.playlists)
+        self.cb_playlists['values'] = tuple([self.all_tracks.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_playlist)
         i = 1
         for track in self.playlist.get_track_names():
@@ -247,8 +245,23 @@ class MusicBox:
     def save_settings(self):
         settings_path = self.path + '/settings.json'
         self.settings["volume"] = self.volume.get()
+        del self.settings['playlists']
+        for playlist in self.playlists:
+            self.settings['playlists'][playlist.name] = playlist.get_tracks()
         with open(settings_path, 'w', encoding='utf-8') as settings_file:
             json.dump(self.settings, settings_file, indent=4)
+
+    def __setup_playlists(self):
+        self.playlists = {}
+        saved_lists = self.settings['playlists']
+        for playlist, tracks in saved_lists.items():
+            self.playlists[playlist] = Playlist(playlist)
+            for track in tracks:
+                self.playlists[playlist].add_track(self._clean_filename(track), track)
+        if self.settings['playlist'] != 'All':
+            self.playlist = self.playlists[self.settings["playlist"]]
+        else:
+            self.playlist = self.all_tracks
 
     def remove_focus(self, event):
         self.root.focus_set()
