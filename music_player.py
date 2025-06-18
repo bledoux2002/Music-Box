@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import time
 import threading
@@ -19,7 +20,7 @@ class MusicBox:
     def __init__(self, root):
         # Directory Information
         self.path = os.path.dirname(os.path.abspath(__file__))
-        self.filepath = self.path + '/files'
+        self.filepath = self._resource_path('files')
         self.files = os.listdir(self.filepath)
         
         self.settings = {}
@@ -277,7 +278,7 @@ class MusicBox:
         '''
         Loads settings from json file
         '''
-        settings_path = self.path + '/settings.json'
+        settings_path = self._resource_path('settings.json')
         with open(settings_path, 'r', encoding='utf-8') as settings_file:
             self.settings = json.load(settings_file)
         self.volume.set(float(self.settings['volume']))
@@ -290,9 +291,12 @@ class MusicBox:
         '''
         Saves settings to json file
         '''
-        val = self.sld_progress.get()
-        self.track_pos = float(val) * (self.track_length / 100)
-        settings_path = self.path + '/settings.json'
+        if self.track_name != '':
+            val = self.sld_progress.get()
+            self.track_pos = float(val) * (self.track_length / 100)
+        else:
+            self.track_pos = 0.0
+        settings_path = self._resource_path('settings.json')
         self.settings['volume'] = self.volume.get()
         self.settings['fade'] = self.fade.get()
         self.settings['current track'] = self.filename
@@ -634,8 +638,8 @@ class MusicBox:
         frm_buttons = Frame(self.top)
         frm_buttons.pack(pady=10)
 
-        Button(frm_buttons, text="DELETE", width=10, command=lambda: self.on_delete(name)).pack(side=LEFT, padx=5)
-        Button(frm_buttons, text="CANCEL", width=10, command=self.top.destroy).pack(side=LEFT, padx=5)
+        Button(frm_buttons, text='DELETE', width=10, command=lambda: self.on_delete(name)).pack(side=LEFT, padx=5)
+        Button(frm_buttons, text='CANCEL', width=10, command=self.top.destroy).pack(side=LEFT, padx=5)
 
     def on_delete(self, name):
         filename = self.playlist_all.get_track(name)
@@ -707,6 +711,16 @@ class MusicBox:
         self.__save_settings()
         # Now destroy the window
         self.root.destroy()
+
+    def _resource_path(self, relative_path):
+        '''
+        Get absolute path to resource, works for dev and for PyInstaller
+        '''
+        try:
+            base_path = sys._MEIPASS
+        except Exception:
+            base_path = os.path.abspath('.')
+        return os.path.join(base_path, relative_path)
 
 def main():
     root = Tk()
