@@ -5,6 +5,7 @@ import random
 import threading
 from tkinter import *
 from tkinter.ttk import *
+from tkinter import Scale as Scl
 from yt_dlp import YoutubeDL
 import mutagen
 from mutagen.mp3 import MP3
@@ -25,16 +26,16 @@ class MusicBox:
         # add 2 channels for fade in/out
         mixer.init()
         self.volume = DoubleVar()
-        self.volume.set(1.0)
-        self.fade = 1000
+        self.fade = IntVar()
+        self.cur_track = None
         self.prev_tracks = []
-        self.shuffle = False
+        self.shuffle = BooleanVar()
         mixer.music.set_volume(self.volume.get())
 
         # TKinter Setup
         self.root = root
         root.configure(bg='medium purple')
-        root.minsize(750, 500)
+        root.minsize(750, 450)
         self.root.title('Adaptive Music Box')
 
         self.style_default = Style()
@@ -56,12 +57,16 @@ class MusicBox:
             self.playlist_all.add_track(self._clean_filename(track), track)
             self.tracks[track] = Track()
 
+        # TKinter Vars
+        self.var_playlist = StringVar()
+
         # Setup
         self.__load_settings()
         self.__setup_playlists()
         
         # Current Track and Playlist
-        self.filename = self.playlist.queue_pop(self.shuffle)
+        # self.filename = self.playlist.queue_pop(self.shuffle.get())
+        self.filename = self.cur_track
         self.track_name = self._clean_filename(self.filename)
 
         # Setup Frames
@@ -105,7 +110,7 @@ class MusicBox:
         self.ent_url.insert(0, 'https://youtu.be/FcaHJDj6KEE')
         self.btn_url = Button(self.frm_download, text='Download')
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
-        self.var_status = StringVar(self.frm_download, value='Please enter a URL')
+        self.var_status = StringVar(value='Please enter a URL')
         self.lbl_status = Label(self.frm_download, textvariable=self.var_status)
 
         self.lbl_url.grid(row=0, column=0, padx=5, pady=5, sticky='w')
@@ -129,13 +134,13 @@ class MusicBox:
         self.frm_player.rowconfigure(1, weight=1, minsize=50)
         self.frm_player.rowconfigure(2, weight=1, minsize=100)
 
-        self.var_title = StringVar(self.frm_player, value='Foo Bar')
+        self.var_title = StringVar(value='Foo Bar')
         self.lbl_title = Label(self.frm_player, textvariable=self.var_title)
 
-        self.var_progress = StringVar(self.frm_player, value='0:00:00')
+        self.var_progress = StringVar(value='0:00:00')
         self.lbl_progress = Label(self.frm_player, textvariable=self.var_progress)
         self.sld_progress = Scale(self.frm_player, orient=HORIZONTAL, from_=0.0, to=100.0)
-        self.var_length = StringVar(self.frm_player, value='99:99:99')
+        self.var_length = StringVar(value='99:99:99')
         self.lbl_length = Label(self.frm_player, textvariable=self.var_length)
 
         # Navigation
@@ -144,11 +149,16 @@ class MusicBox:
         self.frm_buttons.columnconfigure(0, weight=1)
         self.frm_buttons.columnconfigure(1, weight=1)
         self.frm_buttons.columnconfigure(2, weight=1)
+        self.frm_buttons.rowconfigure(0, weight=0)
+        self.frm_buttons.rowconfigure(1, weight=0)
 
         self.btn_start = Button(self.frm_buttons, text='|<<')
         self.btn_play = Button(self.frm_buttons, text='>/||')
         self.btn_end = Button(self.frm_buttons, text='>>|')
-        # self.btn_shuffle = Button(self.frm_player, text='=x=')
+        self.sld_fade = Scl(self.frm_buttons, orient=HORIZONTAL, from_=0, to=5000, resolution=100, variable=self.fade)
+        self.var_fade = StringVar(value=f'Fade (ms)')
+        self.lbl_fade = Label(self.frm_buttons, textvariable=self.var_fade)
+        self.cbtn_shuffle = Checkbutton(self.frm_buttons, text='Shuffle', variable=self.shuffle, command=self.shuffle_songs)
 
         self.lbl_title.grid(row=0, column=0, columnspan=3, padx=5, pady=10, sticky='n')
         self.lbl_progress.grid(row=1, column=0, padx=5, pady=10, sticky='e')
@@ -158,6 +168,9 @@ class MusicBox:
         self.btn_start.grid(row=0, column=0, padx=5, pady=10, sticky='e')
         self.btn_play.grid(row=0, column=1, padx=5, pady=10)
         self.btn_end.grid(row=0, column=2, padx=5, pady=10, sticky='w')
+        self.sld_fade.grid(row=1, column=0, padx=5, sticky='nw')
+        self.lbl_fade.grid(row=2, column=0, padx=5, sticky='nw')
+        self.cbtn_shuffle.grid(row=1, column=1, padx=5, pady=10, sticky='n')
 
         # Volume
         self.frm_volume = Frame(self.frm_player)
@@ -167,7 +180,7 @@ class MusicBox:
         self.frm_volume.rowconfigure(1, weight=0, minsize=10)
 
         self.sld_volume = Scale(self.frm_volume, orient=VERTICAL, from_=1, to=0, variable=self.volume, command=self.update_volume)
-        self.var_volume = StringVar(self.frm_volume, value=(int(100 * self.volume.get())))
+        self.var_volume = StringVar(value=(int(100 * self.volume.get())))
         self.lbl_volume = Label(self.frm_volume, textvariable=self.var_volume)
 
         self.sld_volume.grid(row=0, column=0, padx=10, pady=5, sticky='nsw')
@@ -175,7 +188,7 @@ class MusicBox:
 
         # Playlist with Scrollbar
         self.frm_playlists = Frame(self.frm_player, style=self.style_name)
-        self.frm_playlists.grid(row=2, column=0, padx=10, pady=15, sticky='nw')
+        self.frm_playlists.grid(row=2, column=0, padx=10, pady=15, sticky='nsw')
         self.frm_playlists.columnconfigure(0, weight=1)
         self.frm_playlists.rowconfigure(0, weight=1)
 
@@ -195,13 +208,13 @@ class MusicBox:
         self.cbtn_playlists = []
         self.var_playlists = []
         for i, (playlist_name, obj) in enumerate(self.playlists.items()):
-            self.playlist_var_names.append(StringVar(self.frm_playlists_inner, value=playlist_name))
+            self.playlist_var_names.append(StringVar(value=playlist_name))
             playlists = self.tracks[self.filename].get_playlists()
             if playlist_name in playlists:
-                self.var_playlists.append(Variable(self.frm_playlists_inner, value=i))
+                self.var_playlists.append(Variable(value=i))
             else:
-                self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
-            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.choose_playlist))
+                self.var_playlists.append(Variable(value=-i-1))
+            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.edit_playlists))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
 
         self.btn_start.bind('<Button-1>', self.start)
@@ -232,7 +245,6 @@ class MusicBox:
         self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
         self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
 
-        self.var_playlist = StringVar(self.frm_playlist, value=self.playlist.name)
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_playlist)
@@ -245,19 +257,24 @@ class MusicBox:
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
+        self.change_playlist(None)
+
     def __load_settings(self):
         settings_path = self.path + '/settings.json'
         with open(settings_path, 'r', encoding='utf-8') as settings_file:
             self.settings = json.load(settings_file)
         self.volume.set(float(self.settings['volume']))
-        self.fade = int(self.settings['fade'])
-        self.shuffle = self.settings['shuffle']
+        self.fade.set(int(self.settings['fade']))
+        self.cur_track = self.settings['current track']
+        self.shuffle.set(self.settings['shuffle'])
+        self.var_playlist.set(self.settings['playlist'])
 
     def save_settings(self):
         settings_path = self.path + '/settings.json'
         self.settings['volume'] = self.volume.get()
-        self.settings['fade'] = self.fade
-        self.settings['shuffle'] = self.shuffle
+        self.settings['fade'] = self.fade.get()
+        self.settings['current track'] = self.filename
+        self.settings['shuffle'] = self.shuffle.get()
         self.settings['playlist'] = self.playlist.name
         del self.settings['playlists']
         self.settings['playlists'] = {}
@@ -353,7 +370,15 @@ class MusicBox:
         self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.fadeout(1000)
         
+        print(self.playlist.get_queue())
+        
         self.transition()
+
+    def shuffle_songs(self):
+        if self.shuffle.get():
+            self.playlist.shuffle_queue()
+        else:
+            self.playlist.new_queue()
 
     def forward(self, event):
         # Update track_pos with elapsed time
@@ -465,14 +490,17 @@ class MusicBox:
         self.cnv_playlists.unbind_all('<MouseWheel>')
     
     def transition(self):
-        mixer.music.fadeout(self.fade)
+        mixer.music.fadeout(self.fade.get())
         self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
-        self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle)))
+        self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle.get())))
 
     def play_track(self, name):
         self.track_name = name
-        self.filename = self.playlist.get_track(name)
+        try:
+            self.filename = self.playlist.get_track(name)
+        except:
+            self.filename = self.playlist_all.get_track(name)
         self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
         self.track_length = int(self.audio_info.length)
         self.track_pos = 0  # Track position in ms
@@ -492,7 +520,7 @@ class MusicBox:
         mixer.music.load(f'{self.filepath}/{self.filename}')
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.play(fade_ms=self.fade)
+        mixer.music.play(fade_ms=self.fade.get())
         mixer.music.pause()
         self.start(None)
         self.play(None)
@@ -507,7 +535,7 @@ class MusicBox:
         for track in self.playlist.get_track_names():
             self.lb_tracks.insert(END, track)
 
-    def choose_playlist(self):
+    def edit_playlists(self):
         for i, var in enumerate(self.var_playlists):
             val = var.get()
             playlists = list(self.playlists.keys())

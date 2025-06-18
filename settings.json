@@ -1,7 +1,8 @@
 {
     "volume": 1.0,
-    "fade": 500,
-    "shuffle": false,
+    "fade": 1000,
+    "current track": "Fallout 4 Main Theme [_yGpoRbwe4s].mp3",
+    "shuffle": true,
     "playlist": "Playlist 3",
     "playlists": {
         "Combat": [
