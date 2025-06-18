@@ -186,7 +186,7 @@ class MusicBox:
         self.cbtn_playlists = []
         self.var_playlists = []
         i = 0
-        for playlist_name, playlist_tracks in self.playlists.items():
+        for playlist_name, obj in self.playlists.items():
             self.playlist_var_names.append(StringVar(self.frm_playlists_inner, value=playlist_name))
             self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
             self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
@@ -246,8 +246,9 @@ class MusicBox:
         settings_path = self.path + '/settings.json'
         self.settings["volume"] = self.volume.get()
         del self.settings['playlists']
-        for playlist in self.playlists:
-            self.settings['playlists'][playlist.name] = playlist.get_tracks()
+        self.settings['playlists'] = {}
+        for playlist, obj in self.playlists.items():
+            self.settings['playlists'][playlist] = obj.get_tracks()
         with open(settings_path, 'w', encoding='utf-8') as settings_file:
             json.dump(self.settings, settings_file, indent=4)
 
