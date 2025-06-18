@@ -190,8 +190,7 @@ class MusicBox:
         self.playlist_var_names = []
         self.cbtn_playlists = []
         self.var_playlists = []
-        i = 0
-        for playlist_name, obj in self.playlists.items():
+        for i, (playlist_name, obj) in enumerate(self.playlists.items()):
             self.playlist_var_names.append(StringVar(self.frm_playlists_inner, value=playlist_name))
             playlists = self.tracks[self.filename].get_playlists()
             if playlist_name in playlists:
@@ -200,7 +199,6 @@ class MusicBox:
                 self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
             self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
-            i += 1
 
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
@@ -464,8 +462,7 @@ class MusicBox:
         self.last_play_time = None
         
         playlists = self.tracks[self.filename].get_playlists()
-        i = 0
-        for var in self.playlist_var_names:
+        for i, var in enumerate(self.playlist_var_names):
             if var.get() in playlists:
                 self.var_playlists[i].set(i)
             else:
