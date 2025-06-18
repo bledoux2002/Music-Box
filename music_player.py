@@ -13,11 +13,12 @@ from tracks import Playlist, Track
 
 class MusicBox:
 
+# Core
+
     def __init__(self, root):
         # Directory Information
         self.path = os.path.dirname(os.path.abspath(__file__))
         self.filepath = self.path + '/files'
-        print(self.filepath)
         self.files = os.listdir(self.filepath)
         
         self.settings = {}
@@ -90,6 +91,9 @@ class MusicBox:
         }
 
         self.play_track(self.track_name)
+        self.track_pos = float(self.settings['current position'])
+        self.sld_progress.set(100 * self.track_pos / self.track_length)
+        self.seek_track(None)
         self.play(None)
 
     def __setup_download_frame(self):
@@ -221,8 +225,8 @@ class MusicBox:
         self.btn_start.bind('<Double-1>', self.prev)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
-        self.sld_progress.bind('<ButtonPress-1>', self.on_slider_press)
-        self.sld_progress.bind('<ButtonRelease-1>', self.on_slider_release)
+        self.sld_progress.bind('<ButtonPress-1>', self._on_slider_press)
+        self.sld_progress.bind('<ButtonRelease-1>', self._on_slider_release)
         self.root.bind('<Key-space>', self.play)
         self.root.bind('<Right>', self.forward)
         self.root.bind('<Left>', self.back)
@@ -260,6 +264,9 @@ class MusicBox:
         self.change_playlist(None)
 
     def __load_settings(self):
+        '''
+        Loads settings from json file
+        '''
         settings_path = self.path + '/settings.json'
         with open(settings_path, 'r', encoding='utf-8') as settings_file:
             self.settings = json.load(settings_file)
@@ -270,10 +277,14 @@ class MusicBox:
         self.var_playlist.set(self.settings['playlist'])
 
     def save_settings(self):
+        '''
+        Saves settings to json file
+        '''
         settings_path = self.path + '/settings.json'
         self.settings['volume'] = self.volume.get()
         self.settings['fade'] = self.fade.get()
         self.settings['current track'] = self.filename
+        self.settings['current position'] = self.track_pos
         self.settings['shuffle'] = self.shuffle.get()
         self.settings['playlist'] = self.playlist.name
         del self.settings['playlists']
@@ -296,10 +307,13 @@ class MusicBox:
         else:
             self.playlist = self.playlist_all
 
-    def remove_focus(self, event):
-        self.root.focus_set()
+
+# Downloading
 
     def _yt_progress_hook(self, d):
+        '''
+        Update progress bar and status
+        '''
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             downloaded_bytes = d.get('downloaded_bytes', 0)
@@ -318,8 +332,8 @@ class MusicBox:
             mixer.music.stop()
         try:
             mixer.music.unload()
-        except Exception as e:
-            print(f'Error unloading music: {e}')
+        except:
+            pass
         self.bar_progress.config(value=0)
         url = self.ent_url.get()
         URLs = [url]
@@ -332,13 +346,24 @@ class MusicBox:
                 for url in URLs:
                     info = ydl.extract_info(url, download=True)  # Don't download yet
                     filename = ydl.prepare_filename(info)
-                    print(f'Will save as: {filename}')
                     self.all_music.add_track(self._clean_filename(filename), filename)
                     self.root.after(0, self.var_status.set, 'Success!')
         except Exception as e:
             self.root.after(0, self.var_status.set, f'Error: {e}')
 
+
+# Functionality
+
+    def remove_focus(self, event):
+        '''
+        Removes focus on any widget to allow for volume controls thru keyboard
+        '''
+        self.root.focus_set()
+
     def start(self, event):
+        '''
+        Set player back to start of track
+        '''
         self.sld_progress.set(0)
         self.var_progress.set('0:00:00')
         mixer.music.rewind()
@@ -346,11 +371,18 @@ class MusicBox:
         self.track_pos = 0
 
     def prev(self, event):
+        '''
+        Go back to previous track
+        '''
         track = self.prev_tracks[0]
         self.prev_tracks = self.prev_tracks[1:]
+        self.playlist.queue.insert(0, self.track_name)
         self.play_track(track)
 
     def play(self, event):
+        '''
+        Play/Pause track
+        '''
         if mixer.music.get_busy():
             mixer.music.pause()
             self.is_playing = False
@@ -365,22 +397,28 @@ class MusicBox:
             self._start_progress_updater()  # Start updating progress
 
     def end(self, event):
+        '''
+        Go to end of track and fadeout, then transition to next track
+        '''
         self.sld_progress.set(100)
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.fadeout(1000)
         
-        print(self.playlist.get_queue())
-        
-        self.transition()
+        self._transition()
 
     def shuffle_songs(self):
+        '''
+        Shuffle current queue
+        '''
         if self.shuffle.get():
             self.playlist.shuffle_queue()
         else:
             self.playlist.new_queue()
 
     def forward(self, event):
+        '''
+        Skip ahead 5 seconds in current track
+        '''
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
             self.track_pos += (time.time() - self.last_play_time)
@@ -396,6 +434,9 @@ class MusicBox:
             self.last_play_time = None
 
     def back(self, event):
+        '''
+        Skip backwards 5 seconds in current track
+        '''
         # Update track_pos with elapsed time
         if self.is_playing and self.last_play_time:
             self.track_pos += (time.time() - self.last_play_time)
@@ -410,14 +451,23 @@ class MusicBox:
         else:
             self.last_play_time = None
 
-    def on_slider_press(self, event):
+    def _on_slider_press(self, event):
+        '''
+        Helper function for preventing progress slider from moving while clicked
+        '''
         self.progress_bar_in_use = True
 
-    def on_slider_release(self, event):
+    def _on_slider_release(self, event):
+        '''
+        Helper function for allowing progress slider to move once it is released
+        '''
         self.progress_bar_in_use = False
         self.seek_track(event)
 
     def seek_track(self, event):
+        '''
+        When progress slider is moved, this will update the track to match the current position of the slider
+        '''
         val = self.sld_progress.get()
         self.track_pos = float(val) * (self.track_length / 100)
         mixer.music.rewind()
@@ -430,22 +480,34 @@ class MusicBox:
             self.last_play_time = None
 
     def volume_up(self, event):
+        '''
+        Increase volume by 10%
+        '''
         if self.root.focus_get() == self.root:
             self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
             mixer.music.set_volume(self.volume.get())
             self.var_volume.set(int(100 * self.volume.get()))
 
     def volume_down(self, event):
+        '''
+        Decrease volume by 10%
+        '''
         if self.root.focus_get() == self.root:
             self.volume.set(round(max(self.volume.get() - 0.1, 0), 2))
             mixer.music.set_volume(self.volume.get())
             self.var_volume.set(int(100 * self.volume.get()))
 
     def update_volume(self, val):
+        '''
+        Change volume based on slider
+        '''
         mixer.music.set_volume(self.volume.get())
         self.var_volume.set(int(float(val) * 100))
 
     def _start_progress_updater(self):
+        '''
+        Continuously updates progress slider to reflect current position of current track
+        '''
         if self.is_playing:
             if not mixer.music.get_busy():
                 # Playback finished
@@ -469,6 +531,9 @@ class MusicBox:
             self.root.after(100, self._start_progress_updater)
 
     def _get_track_len(self, length):
+        '''
+        Helper function for formatting track length
+        '''
         hours = int(length // 3600)
         length %= 3600
         mins = int(length // 60)
@@ -478,24 +543,42 @@ class MusicBox:
         return hours, mins, secs
 
     def _on_frame_configure(self, event):
+        '''
+        Uhhhh this might be unnecessary. The code is important but it might not need to be in this separate function
+        '''
         self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox('all'))
 
     def _on_mousewheel(self, event):
+        '''
+        Scrolls list of playlist checkboxes for current track
+        '''
         self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), 'units')
 
     def _bind_mousewheel(self, event):
+        '''
+        Helper function for only scrolling playlist checkboxes when hovering over them
+        '''
         self.cnv_playlists.bind_all('<MouseWheel>', self._on_mousewheel)
 
     def _unbind_mousewheel(self, event):
+        '''
+        Helper function for not scrolling playlsit checkboxes when not hovering over them
+        '''
         self.cnv_playlists.unbind_all('<MouseWheel>')
     
-    def transition(self):
+    def _transition(self):
+        '''
+        Helper function for fading track out and fading next track in
+        '''
         mixer.music.fadeout(self.fade.get())
         self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
         self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle.get())))
 
     def play_track(self, name):
+        '''
+        Finds the corresponding file and plays the track, while updating the UI
+        '''
         self.track_name = name
         try:
             self.filename = self.playlist.get_track(name)
@@ -526,6 +609,9 @@ class MusicBox:
         self.play(None)
 
     def change_playlist(self, event):
+        '''
+        Updates current playlist and list of tracks in playlist frame based on currently selected playlist
+        '''
         playlist = self.cb_playlists.get()
         if playlist == 'All':
             self.playlist = self.playlist_all
@@ -536,6 +622,9 @@ class MusicBox:
             self.lb_tracks.insert(END, track)
 
     def edit_playlists(self):
+        '''
+        Updates which playlists a track is in based on the checkboxes. A bit redundant going over all of them
+        '''
         for i, var in enumerate(self.var_playlists):
             val = var.get()
             playlists = list(self.playlists.keys())
@@ -557,6 +646,9 @@ class MusicBox:
                     pass
 
     def _clean_filename(self, file):
+        '''
+        Helper function for taking raw filename with ID and extension, and trimming to only name (based on yt_dlp default filename)
+        '''
         index = file.index('[')
         return file[:index-1]
 
