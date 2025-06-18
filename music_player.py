@@ -228,6 +228,18 @@ class MusicBox:
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+        self.root.bind('`', lambda e: self.set_playlist(-1))
+        self.root.bind('.', lambda e: self.set_playlist(-1))
+        self.root.bind('0', lambda e: self.set_playlist(0))
+        self.root.bind('1', lambda e: self.set_playlist(1))
+        self.root.bind('2', lambda e: self.set_playlist(2))
+        self.root.bind('3', lambda e: self.set_playlist(3))
+        self.root.bind('4', lambda e: self.set_playlist(4))
+        self.root.bind('5', lambda e: self.set_playlist(5))
+        self.root.bind('6', lambda e: self.set_playlist(6))
+        self.root.bind('7', lambda e: self.set_playlist(7))
+        self.root.bind('8', lambda e: self.set_playlist(8))
+        self.root.bind('9', lambda e: self.set_playlist(9))
         self.cb_playlists.bind('<Return>', self.update_playlist_name)
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
         self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
@@ -696,6 +708,14 @@ class MusicBox:
         self.change_playlist(None)
         os.remove(f'{self.filepath}/{filename}')
         self.top.destroy()
+
+    def set_playlist(self, num):
+        playlists = list(self.playlists.keys())
+        if num == -1:
+            self.cb_playlists.set('All')
+        else:
+            self.cb_playlists.set(playlists[num])
+        self.change_playlist(None)
 
     def change_playlist(self, event):
         '''

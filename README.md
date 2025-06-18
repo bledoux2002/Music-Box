@@ -64,6 +64,7 @@ Run executable within a folder (files and settings will be stored here)
 
 ### Playlists
 - The playlists frame shows the current playlist, which can be changed by clicking on it to open a dropdown menu, and the tracks in the current playlist.
+- Number keys can also be used to change playlists. All 10 are accessible from either the numrow or numpad keys, with tilde (`) and period (.) being assigned to the "All" playlist.
 - Playlist names (except for "All") can be edited by clicking on them when they are currently selected, typing the new name, and hitting Enter/Return on your keyboard.
 
 ### Settings
@@ -71,6 +72,5 @@ Run executable within a folder (files and settings will be stored here)
 - The same json file is also used to store which songs are in which playlists, as well as the names of those playlists.
 
 ## Future Plans
-- Changing track names iin the Listbox similarly to chaning playlist names
-- Changing the current playlist using number keys.
+- Changing track names in the Listbox similarly to chaning playlist names
 - Support for non-Windows machines

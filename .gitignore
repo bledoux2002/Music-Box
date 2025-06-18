@@ -2,3 +2,5 @@ test.py
 /files/*
 /venv
 /build
+setup.txt
+error_log.txt
