@@ -1,14 +1,12 @@
 {
-    "volume": 1.0,
+    "volume": 0.5,
     "fade": 1000,
-    "current track": "Of Green and Grey [_gzlmAW7bMw].mp3",
+    "current track": "",
     "current position": 0.0,
     "shuffle": false,
     "playlist": "All",
     "playlists": {
-        "Combat": [
-            "Combat Ready [-9AC7OTdTJA].mp3"
-        ],
+        "Combat": [],
         "Sneaking": [],
         "Exploration": [],
         "Playlist 3": [],

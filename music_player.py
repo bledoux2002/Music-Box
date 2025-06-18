@@ -37,6 +37,7 @@ class MusicBox:
         root.configure(bg='medium purple')
         root.minsize(750, 450)
         self.root.title('Adaptive Music Box')
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self.style_default = Style()
         self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
@@ -67,7 +68,10 @@ class MusicBox:
         # Current Track and Playlist
         # self.filename = self.playlist.queue_pop(self.shuffle.get())
         self.filename = self.cur_track
-        self.track_name = self._clean_filename(self.filename)
+        if self.filename:
+            self.track_name = self._clean_filename(self.filename)
+        else:
+            self.track_name = ""
         mixer.music.set_volume(self.volume.get())
 
         # Setup Frames
@@ -90,11 +94,12 @@ class MusicBox:
             'nooverwrites': True,
         }
 
-        self.play_track(self.track_name)
-        self.track_pos = float(self.settings['current position'])
-        self.sld_progress.set(100 * self.track_pos / self.track_length)
-        self.seek_track(None)
-        self.play(None)
+        if (self.filename):
+            self.play_track(self.track_name)
+            self.track_pos = float(self.settings['current position'])
+            self.sld_progress.set(100 * self.track_pos / self.track_length)
+            self.seek_track(None)
+            self.play(None)
 
     def __setup_download_frame(self):
         '''
@@ -138,13 +143,13 @@ class MusicBox:
         self.frm_player.rowconfigure(1, weight=1, minsize=50)
         self.frm_player.rowconfigure(2, weight=1, minsize=100)
 
-        self.var_title = StringVar(value='Foo Bar')
+        self.var_title = StringVar(value=self.track_name)
         self.lbl_title = Label(self.frm_player, textvariable=self.var_title)
 
         self.var_progress = StringVar(value='0:00:00')
         self.lbl_progress = Label(self.frm_player, textvariable=self.var_progress)
         self.sld_progress = Scale(self.frm_player, orient=HORIZONTAL, from_=0.0, to=100.0)
-        self.var_length = StringVar(value='99:99:99')
+        self.var_length = StringVar(value='0:00:00')
         self.lbl_length = Label(self.frm_player, textvariable=self.var_length)
 
         # Navigation
@@ -213,7 +218,10 @@ class MusicBox:
         self.var_playlists = []
         for i, (playlist_name, obj) in enumerate(self.playlists.items()):
             self.playlist_var_names.append(StringVar(value=playlist_name))
-            playlists = self.tracks[self.filename].get_playlists()
+            if self.filename:
+                playlists = self.tracks[self.filename].get_playlists()
+            else:
+                playlists = []
             if playlist_name in playlists:
                 self.var_playlists.append(Variable(value=i))
             else:
@@ -276,10 +284,12 @@ class MusicBox:
         self.shuffle.set(self.settings['shuffle'])
         self.var_playlist.set(self.settings['playlist'])
 
-    def save_settings(self):
+    def __save_settings(self):
         '''
         Saves settings to json file
         '''
+        val = self.sld_progress.get()
+        self.track_pos = float(val) * (self.track_length / 100)
         settings_path = self.path + '/settings.json'
         self.settings['volume'] = self.volume.get()
         self.settings['fade'] = self.fade.get()
@@ -652,11 +662,18 @@ class MusicBox:
         index = file.index('[')
         return file[:index-1]
 
+    def on_close(self):
+        '''
+        Closing function to save settings
+        '''
+        self.__save_settings()
+        # Now destroy the window
+        self.root.destroy()
+
 def main():
     root = Tk()
-    music_box = MusicBox(root)
+    MusicBox(root)
     root.mainloop()
-    music_box.save_settings()
 
 if __name__ == '__main__':
     main()
