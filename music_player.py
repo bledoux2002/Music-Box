@@ -322,7 +322,7 @@ class MusicBox:
             self.track_pos = float(val) * (self.track_length / 100)
         else:
             self.track_pos = 0.0
-        self.settings['volume'] = self.volume.get()
+        self.settings['volume'] = round(self.volume.get(), 2)
         self.settings['fade'] = self.fade.get()
         self.settings['current track'] = self.filename
         self.settings['current position'] = self.track_pos
@@ -546,8 +546,10 @@ class MusicBox:
         '''
         Change volume based on slider
         '''
+        val = round(float(val), 2)
         mixer.music.set_volume(self.volume.get())
-        self.var_volume.set(int(float(val) * 100))
+        self.volume.set(round(self.volume.get(), 2))
+        self.var_volume.set(int(val * 100))
 
     def _start_progress_updater(self):
         '''
