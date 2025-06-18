@@ -4,6 +4,7 @@ import time
 import threading
 from tkinter import *
 from tkinter.ttk import *
+from tkinter import messagebox
 from tkinter import Scale as Scl
 from yt_dlp import YoutubeDL
 # import mutagen
@@ -37,7 +38,7 @@ class MusicBox:
         root.configure(bg='medium purple')
         root.minsize(750, 450)
         self.root.title('Adaptive Music Box')
-        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.protocol('WM_DELETE_WINDOW', self.on_close)
 
         self.style_default = Style()
         self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
@@ -71,7 +72,7 @@ class MusicBox:
         if self.filename:
             self.track_name = self._clean_filename(self.filename)
         else:
-            self.track_name = ""
+            self.track_name = ''
         mixer.music.set_volume(self.volume.get())
 
         # Setup Frames
@@ -268,6 +269,7 @@ class MusicBox:
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+        self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
         self.change_playlist(None)
 
@@ -356,7 +358,11 @@ class MusicBox:
                 for url in URLs:
                     info = ydl.extract_info(url, download=True)  # Don't download yet
                     filename = ydl.prepare_filename(info)
-                    self.all_music.add_track(self._clean_filename(filename), filename)
+                    mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                    basename = os.path.basename(mp3_filename)
+                    self.playlist_all.add_track(self._clean_filename(basename), basename)
+                    self.tracks[basename] = Track()
+                    self.change_playlist(None)
                     self.root.after(0, self.var_status.set, 'Success!')
         except Exception as e:
             self.root.after(0, self.var_status.set, f'Error: {e}')
@@ -618,6 +624,37 @@ class MusicBox:
         self.start(None)
         self.play(None)
 
+    def del_track(self, name):
+        self.top = Toplevel(self.root)
+        self.top.title('Confirmation')
+        self.top.grab_set()
+        warning = 'Delete file?'
+        Label(self.top, text=warning).pack(padx=20, pady=10)
+        
+        frm_buttons = Frame(self.top)
+        frm_buttons.pack(pady=10)
+
+        Button(frm_buttons, text="DELETE", width=10, command=lambda: self.on_delete(name)).pack(side=LEFT, padx=5)
+        Button(frm_buttons, text="CANCEL", width=10, command=self.top.destroy).pack(side=LEFT, padx=5)
+
+    def on_delete(self, name):
+        filename = self.playlist_all.get_track(name)
+        if self.track_name == name:
+            mixer.music.stop()
+            mixer.music.unload()
+            self.var_title.set('')
+            self.var_progress.set('0:00:00')
+            self.var_length.set('0:00:00')
+            self.sld_progress.set(0)
+        self.playlist_all.remove_track(name)
+        for p_name, playlist in self.playlists.items():
+            if filename in playlist.get_tracks():
+                playlist.remove_track(name)
+                self.tracks[filename].remove_from_playlist(p_name)
+        self.change_playlist(None)
+        os.remove(f'{self.filepath}/{filename}')
+        self.top.destroy()
+
     def change_playlist(self, event):
         '''
         Updates current playlist and list of tracks in playlist frame based on currently selected playlist
@@ -635,25 +672,26 @@ class MusicBox:
         '''
         Updates which playlists a track is in based on the checkboxes. A bit redundant going over all of them
         '''
-        for i, var in enumerate(self.var_playlists):
-            val = var.get()
-            playlists = list(self.playlists.keys())
-            if val >= 0:
-                self.playlists[playlists[val]].add_track(self.track_name, self.filename)
-                self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].name)
-                if playlists[val] == self.playlist.name:
-                    self.lb_tracks.insert(END, self.track_name)
-            else:
-                try:
-                    self.playlists[playlists[-val-1]].remove_track(self.track_name)
-                    self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].name)
-                    if playlists[-val-1] == self.playlist.name:
-                        tracks = self.lb_tracks.get(0, END)
-                        for i, track in enumerate(tracks):
-                            if track == self.track_name:
-                                self.lb_tracks.delete(i)
-                except:
-                    pass
+        if self.track_name != '':
+            for i, var in enumerate(self.var_playlists):
+                val = var.get()
+                playlists = list(self.playlists.keys())
+                if val >= 0:
+                    self.playlists[playlists[val]].add_track(self.track_name, self.filename)
+                    self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].name)
+                    if playlists[val] == self.playlist.name:
+                        self.lb_tracks.insert(END, self.track_name)
+                else:
+                    try:
+                        self.playlists[playlists[-val-1]].remove_track(self.track_name)
+                        self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].name)
+                        if playlists[-val-1] == self.playlist.name:
+                            tracks = self.lb_tracks.get(0, END)
+                            for i, track in enumerate(tracks):
+                                if track == self.track_name:
+                                    self.lb_tracks.delete(i)
+                    except:
+                        pass
 
     def _clean_filename(self, file):
         '''
