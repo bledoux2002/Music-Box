@@ -454,7 +454,6 @@ class MusicBox:
         pass
 
     def play_track(self, name):
-        print(name)
         self.track_name = name
         self.filename = self.playlist.get_track(name)
         self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
@@ -462,6 +461,14 @@ class MusicBox:
         self.track_pos = 0  # Track position in ms
         self.is_playing = False
         self.last_play_time = None
+        
+        playlists = self.tracks[self.filename].get_playlists()
+        i = 0
+        for var in self.playlist_var_names:
+            if var.get() in playlists:
+                self.var_playlists[i].set(i)
+            else:
+                self.var_playlists[i].set(-i-1)
 
         mixer.music.stop()
         mixer.music.unload()
