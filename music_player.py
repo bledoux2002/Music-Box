@@ -274,6 +274,7 @@ class MusicBox:
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+        self.cb_playlists.bind('<Return>', self.update_playlist_name)
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
         self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
@@ -725,6 +726,22 @@ class MusicBox:
                                     self.lb_tracks.delete(i)
                     except:
                         pass
+
+    def update_playlist_name(self, event):
+        if self.playlist.name == 'All':
+            return
+        oldname = self.playlist.name
+        newname = self.cb_playlists.get()
+        self.playlists[oldname].set_name(newname)
+        self.playlists = {name if name != oldname else newname: playlist for name, playlist in self.playlists.items()}
+        self.playlist = self.playlists[newname]
+        for track in self.playlist.get_tracks():
+            self.tracks[track].remove_from_playlist(oldname)
+            self.tracks[track].add_to_playlist(newname)
+        for var in self.var_playlists:
+            if var.get() == oldname:
+                var.set(newname)
+        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
 
     def _clean_filename(self, file):
         '''
