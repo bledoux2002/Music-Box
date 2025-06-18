@@ -27,7 +27,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
 ### __Installation__
 
 #### Executable
-1. Download music_player.exe
+1. Download music_player.exe in `/dist`
 
 #### Loose Files
 1. Clone or download this repository.
