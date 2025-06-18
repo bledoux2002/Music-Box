@@ -109,6 +109,75 @@ class MusicBox:
             self.seek_track(None)
             self.play(None)
 
+    def __load_settings(self):
+        '''
+        Loads settings from json file
+        '''
+        if os.path.exists(self.settings_path):
+            with open(self.settings_path, 'r', encoding='utf-8') as settings_file:
+                self.settings = json.load(settings_file)
+        else:
+            self.settings = {
+                "volume": 0.5,
+                "fade": 1000,
+                "current track": "",
+                "current position": 0.0,
+                "shuffle": False,
+                "playlist": "All",
+                "playlists": {
+                    "Playlist 0": [],
+                    "Playlist 1": [],
+                    "Playlist 2": [],
+                    "Playlist 3": [],
+                    "Playlist 4": [],
+                    "Playlist 5": [],
+                    "Playlist 6": [],
+                    "Playlist 7": [],
+                    "Playlist 8": [],
+                    "Playlist 9": []
+                }
+            }
+        self.volume.set(float(self.settings['volume']))
+        self.fade.set(int(self.settings['fade']))
+        self.cur_track = self.settings['current track']
+        self.shuffle.set(self.settings['shuffle'])
+        self.var_playlist.set(self.settings['playlist'])
+
+    def __save_settings(self):
+        '''
+        Saves settings to json file
+        '''
+        if self.track_name != '':
+            val = self.sld_progress.get()
+            self.track_pos = float(val) * (self.track_length / 100)
+        else:
+            self.track_pos = 0.0
+        self.settings['volume'] = round(self.volume.get(), 2)
+        self.settings['fade'] = self.fade.get()
+        self.settings['current track'] = self.filename
+        self.settings['current position'] = self.track_pos
+        self.settings['shuffle'] = self.shuffle.get()
+        self.settings['playlist'] = self.playlist.name
+        del self.settings['playlists']
+        self.settings['playlists'] = {}
+        for playlist, obj in self.playlists.items():
+            self.settings['playlists'][playlist] = obj.get_tracks()
+        with open(self.settings_path, 'w', encoding='utf-8') as settings_file:
+            json.dump(self.settings, settings_file, indent=4)
+
+    def __setup_playlists(self):
+        self.playlists = {}
+        saved_lists = self.settings['playlists']
+        for playlist, tracks in saved_lists.items():
+            self.playlists[playlist] = Playlist(playlist)
+            for track in tracks:
+                self.playlists[playlist].add_track(self._clean_filename(track), track)
+                self.tracks[track].add_to_playlist(playlist)
+        if self.settings['playlist'] != 'All':
+            self.playlist = self.playlists[self.settings['playlist']]
+        else:
+            self.playlist = self.playlist_all
+
     def __setup_download_frame(self):
         '''
         Sets up the Download Frame
@@ -137,6 +206,33 @@ class MusicBox:
         self.lbl_status.grid(row=2, column=1, sticky='ew')
 
         self.btn_url.bind('<Button-1>', self.download)
+
+    def __setup_playlists_frame(self):
+        '''
+        Sets up Playlists Frame
+        '''
+        self.frm_playlist = Frame(self.root, style=self.style_name)
+        self.frm_playlist.grid(row=1, column=1, padx=25, pady=25, sticky='nsew')
+
+        self.frm_playlist.columnconfigure(0, weight=1, minsize=100)
+        self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
+        self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
+
+        self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
+        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
+        self.lb_tracks = Listbox(self.frm_playlist)
+        for track in self.playlist.get_track_names():
+            self.lb_tracks.insert(END, track)
+
+        self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
+        self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
+
+        self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
+        self.cb_playlists.bind('<Return>', self.update_playlist_name)
+        self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+        self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+
+        self.change_playlist(None)
 
     def __setup_player_frame(self):
         '''
@@ -254,104 +350,8 @@ class MusicBox:
         self.cnv_playlists.bind('<Enter>', self._bind_mousewheel)
         self.cnv_playlists.bind('<Leave>', self._unbind_mousewheel)
 
-    def __setup_playlists_frame(self):
-        '''
-        Sets up Playlists Frame
-        '''
-        self.frm_playlist = Frame(self.root, style=self.style_name)
-        self.frm_playlist.grid(row=1, column=1, padx=25, pady=25, sticky='nsew')
 
-        self.frm_playlist.columnconfigure(0, weight=1, minsize=100)
-        self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
-        self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
-
-        self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
-        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
-        self.lb_tracks = Listbox(self.frm_playlist)
-        for track in self.playlist.get_track_names():
-            self.lb_tracks.insert(END, track)
-
-        self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
-        self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
-
-        self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
-        self.cb_playlists.bind('<Return>', self.update_playlist_name)
-        self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
-        self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
-
-        self.change_playlist(None)
-
-    def __load_settings(self):
-        '''
-        Loads settings from json file
-        '''
-        if os.path.exists(self.settings_path):
-            with open(self.settings_path, 'r', encoding='utf-8') as settings_file:
-                self.settings = json.load(settings_file)
-        else:
-            self.settings = {
-                "volume": 0.5,
-                "fade": 1000,
-                "current track": "",
-                "current position": 0.0,
-                "shuffle": False,
-                "playlist": "All",
-                "playlists": {
-                    "Playlist 0": [],
-                    "Playlist 1": [],
-                    "Playlist 2": [],
-                    "Playlist 3": [],
-                    "Playlist 4": [],
-                    "Playlist 5": [],
-                    "Playlist 6": [],
-                    "Playlist 7": [],
-                    "Playlist 8": [],
-                    "Playlist 9": []
-                }
-            }
-        self.volume.set(float(self.settings['volume']))
-        self.fade.set(int(self.settings['fade']))
-        self.cur_track = self.settings['current track']
-        self.shuffle.set(self.settings['shuffle'])
-        self.var_playlist.set(self.settings['playlist'])
-
-    def __save_settings(self):
-        '''
-        Saves settings to json file
-        '''
-        if self.track_name != '':
-            val = self.sld_progress.get()
-            self.track_pos = float(val) * (self.track_length / 100)
-        else:
-            self.track_pos = 0.0
-        self.settings['volume'] = round(self.volume.get(), 2)
-        self.settings['fade'] = self.fade.get()
-        self.settings['current track'] = self.filename
-        self.settings['current position'] = self.track_pos
-        self.settings['shuffle'] = self.shuffle.get()
-        self.settings['playlist'] = self.playlist.name
-        del self.settings['playlists']
-        self.settings['playlists'] = {}
-        for playlist, obj in self.playlists.items():
-            self.settings['playlists'][playlist] = obj.get_tracks()
-        with open(self.settings_path, 'w', encoding='utf-8') as settings_file:
-            json.dump(self.settings, settings_file, indent=4)
-
-    def __setup_playlists(self):
-        self.playlists = {}
-        saved_lists = self.settings['playlists']
-        for playlist, tracks in saved_lists.items():
-            self.playlists[playlist] = Playlist(playlist)
-            for track in tracks:
-                self.playlists[playlist].add_track(self._clean_filename(track), track)
-                self.tracks[track].add_to_playlist(playlist)
-        if self.settings['playlist'] != 'All':
-            self.playlist = self.playlists[self.settings['playlist']]
-        else:
-            self.playlist = self.playlist_all
-
-
-# Downloading
+# Download Frame
 
     def _yt_progress_hook(self, d):
         '''
@@ -399,7 +399,7 @@ class MusicBox:
             self.root.after(0, self.var_status.set, f'Error: {e}')
 
 
-# Functionality
+# Playback
 
     def remove_focus(self, event):
         '''
@@ -734,8 +734,6 @@ class MusicBox:
                                     self.lb_tracks.delete(i)
                     except:
                         pass
-
-# Helper Functions
 
     def update_playlist_name(self, event):
         if self.playlist.name == 'All':
