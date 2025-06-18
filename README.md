@@ -50,24 +50,24 @@ Run executable within a folder (files and settings will be stored here)
 ## Usage
 
 ### Downloading Files
-YouTube files will be downloaded as MP3's. Click "Share" and "Copy Link" on the video. It works with playlists as well, although currently cannot be canceled.
-Paste the URL into the box labeled URL, and click Download. Files will be downloaded to a `/files` folder in the same directory as the executable file.
-Status messages will display directly below, and will display "Success!" once the download has completed.
+- YouTube files will be downloaded as MP3's. Click "Share" and "Copy Link" on the video. It works with playlists as well, although currently cannot be canceled.
+- Paste the URL into the box labeled URL, and click Download. Files will be downloaded to a `/files` folder in the same directory as the executable file.
+- Status messages will display directly below, and will display "Success!" once the download has completed.
 
 ### Playback
-The playback frame shows the current position in the current track, the length of the current track, the volume, and the fade in/out time, as well as which playlists the current track is in and if the current playlsit is being shuffled or not.
-The horizontal slider can be dragged to seek through the track, or the Left and Right arrow keys can be used to skip back or forward 5 seconds. 
-The three buttons from left to right are Start (|<<), Play/Pause (>/||), and Next (>>|). Double-clicking the Start button will go to the previous track.
-The fade slider is in milliseconds, and determines how long the current track will fade out and the next track will fade in. So, if the fade is set to 500ms, it will take 1000ms (1 second) for the volume to reach its set level again.
-The vertical slider sets the volume of playback, as well as the Up and Down arrow keys.
+- The playback frame shows the current position in the current track, the length of the current track, the volume, and the fade in/out time, as well as which playlists the current track is in and if the current playlsit is being shuffled or not.
+- The horizontal slider can be dragged to seek through the track, or the Left and Right arrow keys can be used to skip back or forward 5 seconds. 
+- The three buttons from left to right are Start (|<<), Play/Pause (>/||), and Next (>>|). Double-clicking the Start button will go to the previous track.
+- The fade slider is in milliseconds, and determines how long the current track will fade out and the next track will fade in. So, if the fade is set to 500ms, it will take 1000ms (1 second) for the volume to reach its set level again.
+- The vertical slider sets the volume of playback, as well as the Up and Down arrow keys.
 
 ### Playlists
-The playlists frame shows the current playlist, which can be changed by clicking on it to open a dropdown menu, and the tracks in the current playlist.
-Playlist names (except for "All") can be edited by clicking on them when they are currently selected, typing the new name, and hitting Enter/Return on your keyboard.
+- The playlists frame shows the current playlist, which can be changed by clicking on it to open a dropdown menu, and the tracks in the current playlist.
+- Playlist names (except for "All") can be edited by clicking on them when they are currently selected, typing the new name, and hitting Enter/Return on your keyboard.
 
 ### Settings
-Many settings are saved to a json file to be loaded up on next boot. The current playlist, track, position in track, volume, and fade, as well as whether the playlist is shuffled.
-The same json file is also used to store which songs are in which playlists, as well as the names of those playlists.
+- Many settings are saved to a json file to be loaded up on next boot. The current playlist, track, position in track, volume, and fade, as well as whether the playlist is shuffled.
+- The same json file is also used to store which songs are in which playlists, as well as the names of those playlists.
 
 ## Future Plans
 - Changing track names iin the Listbox similarly to chaning playlist names
