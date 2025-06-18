@@ -71,13 +71,14 @@ class MusicBox:
         self.root.rowconfigure(1, weight=1, minsize=100)
         
         self.root.bind('<Escape>', self.remove_focus)
+        
+        self.progress_bar_in_use = False
 
         # Frame Setups
         self.__load_settings()
         self.__setup_download()
         self.__setup_player()
         self.__setup_playlists()
-        
         
         self.play_track(self.track_name)
 
@@ -197,6 +198,8 @@ class MusicBox:
         self.btn_start.bind('<Button-1>', self.start)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
+        self.sld_progress.bind('<ButtonPress-1>', self.on_slider_press)
+        self.sld_progress.bind("<ButtonRelease-1>", self.on_slider_release)
         self.root.bind('<Key-space>', self.play)
         self.root.bind('<Right>', self.forward)
         self.root.bind('<Left>', self.back)
@@ -347,6 +350,25 @@ class MusicBox:
         else:
             self.last_play_time = None
 
+    def on_slider_press(self, event):
+        self.progress_bar_in_use = True
+
+    def on_slider_release(self, event):
+        self.progress_bar_in_use = False
+        self.seek_track(event)
+
+    def seek_track(self, event):
+        val = self.sld_progress.get()
+        self.track_pos = float(val) * (self.track_length / 100)
+        mixer.music.rewind()
+        mixer.music.set_pos(self.track_pos)
+        hours, mins, secs = self._get_track_len(self.track_pos)
+        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
+        if self.is_playing:
+            self.last_play_time = time.time()
+        else:
+            self.last_play_time = None
+
     def volume_up(self, event):
         if self.root.focus_get() == self.root:
             self.volume.set(round(min(self.volume.get() + 0.1, 1), 2))
@@ -381,7 +403,8 @@ class MusicBox:
                 current_pos = self.track_pos
             hours, mins, secs = self._get_track_len(current_pos)
             self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-            self.sld_progress.set(100 * current_pos / self.track_length)
+            if not self.progress_bar_in_use:
+                self.sld_progress.set(100 * current_pos / self.track_length)
             # Schedule next update
             self.root.after(100, self._start_progress_updater)
 
@@ -427,6 +450,7 @@ class MusicBox:
         self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.play()
         mixer.music.pause()
+        self.start(None)
 
     def change_playlist(self, event):
         print(self.var_playlist.get())
