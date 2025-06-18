@@ -27,6 +27,7 @@ class MusicBox:
         self.volume = DoubleVar()
         self.volume.set(1.0)
         self.fade = 1000
+        self.prev_tracks = []
         self.shuffle = False
         mixer.music.set_volume(self.volume.get())
 
@@ -200,10 +201,11 @@ class MusicBox:
                 self.var_playlists.append(Variable(self.frm_playlists_inner, value=i))
             else:
                 self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
-            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
+            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.choose_playlist))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
 
         self.btn_start.bind('<Button-1>', self.start)
+        self.btn_start.bind('<Double-1>', self.prev)
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
         self.sld_progress.bind('<ButtonPress-1>', self.on_slider_press)
@@ -241,7 +243,6 @@ class MusicBox:
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
-        self.lb_tracks.bind('<<ListboxSelect>>', lambda e: self.queue_track(self.lb_tracks.get(self.lb_tracks.curselection())))
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
     def __load_settings(self):
@@ -326,6 +327,11 @@ class MusicBox:
         mixer.music.rewind()
         self.last_play_time = None
         self.track_pos = 0
+
+    def prev(self, event):
+        track = self.prev_tracks[0]
+        self.prev_tracks = self.prev_tracks[1:]
+        self.play_track(track)
 
     def play(self, event):
         if mixer.music.get_busy():
@@ -460,6 +466,7 @@ class MusicBox:
     
     def transition(self):
         mixer.music.fadeout(self.fade)
+        self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
         self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle)))
 
@@ -491,7 +498,6 @@ class MusicBox:
         self.play(None)
 
     def change_playlist(self, event):
-        # print(self.var_playlist.get())
         playlist = self.cb_playlists.get()
         if playlist == 'All':
             self.playlist = self.playlist_all
@@ -501,24 +507,26 @@ class MusicBox:
         for track in self.playlist.get_track_names():
             self.lb_tracks.insert(END, track)
 
-    def toggle_playlist(self):
+    def choose_playlist(self):
         for i, var in enumerate(self.var_playlists):
             val = var.get()
             playlists = list(self.playlists.keys())
             if val >= 0:
                 self.playlists[playlists[val]].add_track(self.track_name, self.filename)
+                self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].name)
+                if playlists[val] == self.playlist.name:
+                    self.lb_tracks.insert(END, self.track_name)
             else:
                 try:
                     self.playlists[playlists[-val-1]].remove_track(self.track_name)
+                    self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].name)
+                    if playlists[-val-1] == self.playlist.name:
+                        tracks = self.lb_tracks.get(0, END)
+                        for i, track in enumerate(tracks):
+                            if track == self.track_name:
+                                self.lb_tracks.delete(i)
                 except:
                     pass
-            self._update_playlist(val)
-
-    def _update_playlist(self, num): #update playlist frame
-        if num >=0:
-            pass
-        else:
-            pass
 
     def _clean_filename(self, file):
         index = file.index('[')
@@ -581,6 +589,9 @@ class Playlist:
             return True
         else:
             return False
+    
+    def get_length(self):
+        return len(self.tracks)
 
 class Track:
     def __init__(self):

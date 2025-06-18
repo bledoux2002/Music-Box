@@ -2,7 +2,7 @@
     "volume": 1.0,
     "fade": 500,
     "shuffle": false,
-    "playlist": "All",
+    "playlist": "Playlist 3",
     "playlists": {
         "Combat": [
             "Combat Ready [-9AC7OTdTJA].mp3",
@@ -25,7 +25,11 @@
             "Predator and Prey [8Wo5odZ1j9s].mp3"
         ],
         "Exploration": [],
-        "Playlist 3": [],
+        "Playlist 3": [
+            "The Commonwealth [FLtN8PekdXI].mp3",
+            "Fallout 4 Main Theme [_yGpoRbwe4s].mp3",
+            "Dominant Species [FcaHJDj6KEE].mp3"
+        ],
         "Playlist 4": [],
         "Playlist 5": [],
         "Playlist 6": [],
