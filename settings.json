@@ -2,10 +2,8 @@
     "volume": 1.0,
     "playlist": "All",
     "playlists": {
-        "Playlist 0": [
-        ],
-        "Playlist 1": [
-        ],
+        "Playlist 0": [],
+        "Playlist 1": [],
         "Playlist 2": [],
         "Playlist 3": [],
         "Playlist 4": [],

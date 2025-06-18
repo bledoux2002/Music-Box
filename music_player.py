@@ -46,21 +46,25 @@ class MusicBox:
         
         self.progress_bar_in_use = False
 
-        self.all_tracks = Playlist('All')
+        self.playlist_all = Playlist('All')
+        self.tracks = {}
         for track in self.files:
-            self.all_tracks.add_track(self._clean_filename(track), track)
+            self.playlist_all.add_track(self._clean_filename(track), track)
+            self.tracks[track] = Track()
 
-        # Setups
+        # Setup
         self.__load_settings()
         self.__setup_playlists()
-        self.__setup_download_frame()
-        self.__setup_player_frame()
-        self.__setup_playlists_frame()
         
         # Current Track and Playlist
         self.filename = self.playlist.get_tracks()[0]
         self.track_name = self._clean_filename(self.filename)
 
+        # Setup Frames
+        self.__setup_download_frame()
+        self.__setup_player_frame()
+        self.__setup_playlists_frame()
+        
         # YT_DLP Options
         self.ydl_opts = {
             'format': 'bestaudio/best',
@@ -188,7 +192,11 @@ class MusicBox:
         i = 0
         for playlist_name, obj in self.playlists.items():
             self.playlist_var_names.append(StringVar(self.frm_playlists_inner, value=playlist_name))
-            self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
+            playlists = self.tracks[self.filename].get_playlists()
+            if playlist_name in playlists:
+                self.var_playlists.append(Variable(self.frm_playlists_inner, value=i))
+            else:
+                self.var_playlists.append(Variable(self.frm_playlists_inner, value=-i-1))
             self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.toggle_playlist))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
             i += 1
@@ -222,7 +230,7 @@ class MusicBox:
 
         self.var_playlist = StringVar(self.frm_playlist, value=self.playlist.name)
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
-        self.cb_playlists['values'] = tuple([self.all_tracks.name]) + tuple(name for name, _ in self.playlists.items())
+        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_playlist)
         for track in self.playlist.get_track_names():
             self.lb_tracks.insert(END, track)
@@ -257,10 +265,11 @@ class MusicBox:
             self.playlists[playlist] = Playlist(playlist)
             for track in tracks:
                 self.playlists[playlist].add_track(self._clean_filename(track), track)
+                self.tracks[track].add_to_playlist(playlist)
         if self.settings['playlist'] != 'All':
             self.playlist = self.playlists[self.settings["playlist"]]
         else:
-            self.playlist = self.all_tracks
+            self.playlist = self.playlist_all
 
     def remove_focus(self, event):
         self.root.focus_set()
@@ -468,7 +477,7 @@ class MusicBox:
         # print(self.var_playlist.get())
         playlist = self.cb_playlists.get()
         if playlist == 'All':
-            self.playlist = self.all_tracks
+            self.playlist = self.playlist_all
         else:
             self.playlist = self.playlists[playlist]
         self.lb_tracks.delete(0, END)
@@ -526,6 +535,20 @@ class Playlist:
 
     def get_track(self, name):
         return self.tracks[name]
+
+class Track:
+    def __init__(self):
+        self.playlists = set()
+        
+    def add_to_playlist(self, playlist):
+        self.playlists.add(playlist)
+    
+    def remove_from_playlist(self, playlist):
+        if playlist in self.playlists:
+            self.playlists.remove(playlist)
+    
+    def get_playlists(self):
+        return self.playlists
 
 def main():
     root = Tk()
