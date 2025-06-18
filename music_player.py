@@ -220,14 +220,12 @@ class MusicBox:
         self.frm_playlist.rowconfigure(0, weight=0, minsize=10)
         self.frm_playlist.rowconfigure(1, weight=1, minsize=200)
 
-        self.var_playlist = StringVar(self.frm_playlist, value=self.all_tracks.name)
+        self.var_playlist = StringVar(self.frm_playlist, value=self.playlist.name)
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
         self.cb_playlists['values'] = tuple([self.all_tracks.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_playlist)
-        i = 1
         for track in self.playlist.get_track_names():
-            self.lb_tracks.insert(i, track)
-            i += 1
+            self.lb_tracks.insert(END, track)
 
         self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
         self.lb_tracks.grid(row=1, column=0, padx=10, pady=5, sticky='nsew')
@@ -467,7 +465,15 @@ class MusicBox:
         self.start(None)
 
     def change_playlist(self, event):
-        print(self.var_playlist.get())
+        # print(self.var_playlist.get())
+        playlist = self.cb_playlists.get()
+        if playlist == 'All':
+            self.playlist = self.all_tracks
+        else:
+            self.playlist = self.playlists[playlist]
+        self.lb_tracks.delete(0, END)
+        for track in self.playlist.get_track_names():
+            self.lb_tracks.insert(END, track)
 
     def toggle_playlist(self):
         for i, var in enumerate(self.var_playlists):
