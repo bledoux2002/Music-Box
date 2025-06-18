@@ -675,6 +675,8 @@ class MusicBox:
             self.var_progress.set('0:00:00')
             self.var_length.set('0:00:00')
             self.sld_progress.set(0)
+            self.track_name = ''
+            self.filename = ''
         self.playlist_all.remove_track(name)
         for p_name, playlist in self.playlists.items():
             if filename in playlist.get_tracks():
