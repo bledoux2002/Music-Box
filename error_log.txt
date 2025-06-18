@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "I:\Coding\Adaptive-Music-Box\music_player.py", line 780, in <module>
+    main()
+  File "I:\Coding\Adaptive-Music-Box\music_player.py", line 776, in main
+    raise ValueError('Testing out error handling')
+ValueError: Testing out error handling

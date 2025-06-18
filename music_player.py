@@ -3,6 +3,7 @@ import sys
 import json
 import time
 import threading
+import traceback
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -123,7 +124,7 @@ class MusicBox:
 
         self.lbl_url = Label(self.frm_download, text='URL:')
         self.ent_url = Entry(self.frm_download)
-        self.ent_url.insert(0, 'https://youtu.be/FcaHJDj6KEE')
+        self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws')
         self.btn_url = Button(self.frm_download, text='Download')
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
         self.var_status = StringVar(value='Please enter a URL')
@@ -429,28 +430,31 @@ class MusicBox:
         '''
         Play/Pause track
         '''
-        if mixer.music.get_busy():
-            mixer.music.pause()
-            self.is_playing = False
-            if self.last_play_time:
-                # Add elapsed time since last unpause to track_pos
-                self.track_pos += (time.time() - self.last_play_time)
-                self.last_play_time = None
-        else:
-            mixer.music.unpause()
-            self.is_playing = True
-            self.last_play_time = time.time()
-            self._start_progress_updater()  # Start updating progress
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url and self.track_name != '':
+            if mixer.music.get_busy():
+                mixer.music.pause()
+                self.is_playing = False
+                if self.last_play_time:
+                    # Add elapsed time since last unpause to track_pos
+                    self.track_pos += (time.time() - self.last_play_time)
+                    self.last_play_time = None
+            else:
+                mixer.music.unpause()
+                self.is_playing = True
+                self.last_play_time = time.time()
+                self._start_progress_updater()  # Start updating progress
 
     def end(self, event):
         '''
         Go to end of track and fadeout, then transition to next track
         '''
-        self.sld_progress.set(100)
-        hours, mins, secs = self._get_track_len(self.track_length)
-        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-        
-        self._transition()
+        if self.track_name != '':
+            self.sld_progress.set(100)
+            hours, mins, secs = self._get_track_len(self.track_length)
+            self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
+
+            self._transition()
 
     def shuffle_songs(self):
         '''
@@ -465,37 +469,41 @@ class MusicBox:
         '''
         Skip ahead 5 seconds in current track
         '''
-        # Update track_pos with elapsed time
-        if self.is_playing and self.last_play_time:
-            self.track_pos += (time.time() - self.last_play_time)
-        self.track_pos = min(self.track_pos + 5, self.track_length)
-        mixer.music.rewind()
-        mixer.music.set_pos(self.track_pos)
-        hours, mins, secs = self._get_track_len(self.track_pos)
-        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-        self.sld_progress.set(100 * self.track_pos / self.track_length)
-        if self.is_playing:
-            self.last_play_time = time.time()
-        else:
-            self.last_play_time = None
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url:
+            # Update track_pos with elapsed time
+            if self.is_playing and self.last_play_time:
+                self.track_pos += (time.time() - self.last_play_time)
+            self.track_pos = min(self.track_pos + 5, self.track_length)
+            mixer.music.rewind()
+            mixer.music.set_pos(self.track_pos)
+            hours, mins, secs = self._get_track_len(self.track_pos)
+            self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
+            self.sld_progress.set(100 * self.track_pos / self.track_length)
+            if self.is_playing:
+                self.last_play_time = time.time()
+            else:
+                self.last_play_time = None
 
     def back(self, event):
         '''
         Skip backwards 5 seconds in current track
         '''
-        # Update track_pos with elapsed time
-        if self.is_playing and self.last_play_time:
-            self.track_pos += (time.time() - self.last_play_time)
-        self.track_pos = max(self.track_pos - 5, 0)
-        mixer.music.rewind()
-        mixer.music.set_pos(self.track_pos)
-        hours, mins, secs = self._get_track_len(self.track_pos)
-        self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-        self.sld_progress.set(100 * self.track_pos / self.track_length)
-        if self.is_playing:
-            self.last_play_time = time.time()
-        else:
-            self.last_play_time = None
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url:
+            # Update track_pos with elapsed time
+            if self.is_playing and self.last_play_time:
+                self.track_pos += (time.time() - self.last_play_time)
+            self.track_pos = max(self.track_pos - 5, 0)
+            mixer.music.rewind()
+            mixer.music.set_pos(self.track_pos)
+            hours, mins, secs = self._get_track_len(self.track_pos)
+            self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
+            self.sld_progress.set(100 * self.track_pos / self.track_length)
+            if self.is_playing:
+                self.last_play_time = time.time()
+            else:
+                self.last_play_time = None
 
     def _on_slider_press(self, event):
         '''
@@ -727,6 +735,8 @@ class MusicBox:
                     except:
                         pass
 
+# Helper Functions
+
     def update_playlist_name(self, event):
         if self.playlist.name == 'All':
             return
@@ -739,6 +749,9 @@ class MusicBox:
             self.tracks[track].remove_from_playlist(oldname)
             self.tracks[track].add_to_playlist(newname)
         for var in self.var_playlists:
+            if var.get() == oldname:
+                var.set(newname)
+        for var in self.playlist_var_names:
             if var.get() == oldname:
                 var.set(newname)
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
@@ -774,4 +787,16 @@ def main():
     root.mainloop()
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception as e:
+        with open("error_log.txt", "w", encoding="utf-8") as f:
+            f.write(traceback.format_exc())
+        # Optionally, show a message box to the user
+        try:
+            root = Tk()
+            root.withdraw()
+            messagebox.showerror("Error", "An unexpected error occurred. See error_log.txt for details.")
+            root.destroy()
+        except:
+            pass
