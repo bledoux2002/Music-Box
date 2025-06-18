@@ -14,13 +14,18 @@ from pygame import mixer
 from tracks import Playlist, Track
 
 class MusicBox:
-
-# Core
-
     def __init__(self, root):
         # Directory Information
-        self.path = os.path.dirname(os.path.abspath(__file__))
-        self.filepath = self._resource_path('files')
+        if getattr(sys, 'frozen', False):
+            # Running as PyInstaller EXE
+            self.base_path = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.filepath = os.path.join(self.base_path, 'files')
+        self.settings_path = os.path.join(self.base_path, 'settings.json')
+        if not os.path.exists(self.filepath):
+            os.makedirs(self.filepath)
         self.files = os.listdir(self.filepath)
         
         self.settings = {}
@@ -66,7 +71,7 @@ class MusicBox:
         # Setup
         self.__load_settings()
         self.__setup_playlists()
-        
+
         # Current Track and Playlist
         # self.filename = self.playlist.queue_pop(self.shuffle.get())
         self.filename = self.cur_track
@@ -278,9 +283,30 @@ class MusicBox:
         '''
         Loads settings from json file
         '''
-        settings_path = self._resource_path('settings.json')
-        with open(settings_path, 'r', encoding='utf-8') as settings_file:
-            self.settings = json.load(settings_file)
+        if os.path.exists(self.settings_path):
+            with open(self.settings_path, 'r', encoding='utf-8') as settings_file:
+                self.settings = json.load(settings_file)
+        else:
+            self.settings = {
+                "volume": 0.5,
+                "fade": 1000,
+                "current track": "",
+                "current position": 0.0,
+                "shuffle": False,
+                "playlist": "All",
+                "playlists": {
+                    "Playlist 0": [],
+                    "Playlist 1": [],
+                    "Playlist 2": [],
+                    "Playlist 3": [],
+                    "Playlist 4": [],
+                    "Playlist 5": [],
+                    "Playlist 6": [],
+                    "Playlist 7": [],
+                    "Playlist 8": [],
+                    "Playlist 9": []
+                }
+            }
         self.volume.set(float(self.settings['volume']))
         self.fade.set(int(self.settings['fade']))
         self.cur_track = self.settings['current track']
@@ -296,7 +322,6 @@ class MusicBox:
             self.track_pos = float(val) * (self.track_length / 100)
         else:
             self.track_pos = 0.0
-        settings_path = self._resource_path('settings.json')
         self.settings['volume'] = self.volume.get()
         self.settings['fade'] = self.fade.get()
         self.settings['current track'] = self.filename
@@ -307,7 +332,7 @@ class MusicBox:
         self.settings['playlists'] = {}
         for playlist, obj in self.playlists.items():
             self.settings['playlists'][playlist] = obj.get_tracks()
-        with open(settings_path, 'w', encoding='utf-8') as settings_file:
+        with open(self.settings_path, 'w', encoding='utf-8') as settings_file:
             json.dump(self.settings, settings_file, indent=4)
 
     def __setup_playlists(self):
