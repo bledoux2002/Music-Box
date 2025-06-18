@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import random
 import threading
 from tkinter import *
 from tkinter.ttk import *
@@ -25,6 +26,8 @@ class MusicBox:
         mixer.init()
         self.volume = DoubleVar()
         self.volume.set(1.0)
+        self.fade = 1000
+        self.shuffle = False
         mixer.music.set_volume(self.volume.get())
 
         # TKinter Setup
@@ -57,7 +60,7 @@ class MusicBox:
         self.__setup_playlists()
         
         # Current Track and Playlist
-        self.filename = self.playlist.get_tracks()[0]
+        self.filename = self.playlist.queue_pop(self.shuffle)
         self.track_name = self._clean_filename(self.filename)
 
         # Setup Frames
@@ -79,7 +82,7 @@ class MusicBox:
             'progress_hooks': [self._yt_progress_hook],
             'nooverwrites': True,
         }
-        
+
         self.play_track(self.track_name)
         self.play(None)
 
@@ -204,7 +207,7 @@ class MusicBox:
         self.btn_play.bind('<Button-1>', self.play)
         self.btn_end.bind('<Button-1>', self.end)
         self.sld_progress.bind('<ButtonPress-1>', self.on_slider_press)
-        self.sld_progress.bind("<ButtonRelease-1>", self.on_slider_release)
+        self.sld_progress.bind('<ButtonRelease-1>', self.on_slider_release)
         self.root.bind('<Key-space>', self.play)
         self.root.bind('<Right>', self.forward)
         self.root.bind('<Left>', self.back)
@@ -212,9 +215,9 @@ class MusicBox:
         self.root.bind('<Down>', self.volume_down)
         self.root.bind('<KP_Home>', self.start)
         self.root.bind('<KP_End>', self.end)
-        self.frm_playlists_inner.bind("<Configure>", self._on_frame_configure)
-        self.cnv_playlists.bind("<Enter>", self._bind_mousewheel)
-        self.cnv_playlists.bind("<Leave>", self._unbind_mousewheel)
+        self.frm_playlists_inner.bind('<Configure>', self._on_frame_configure)
+        self.cnv_playlists.bind('<Enter>', self._bind_mousewheel)
+        self.cnv_playlists.bind('<Leave>', self._unbind_mousewheel)
 
     def __setup_playlists_frame(self):
         '''
@@ -239,17 +242,22 @@ class MusicBox:
 
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
         self.lb_tracks.bind('<<ListboxSelect>>', lambda e: self.queue_track(self.lb_tracks.get(self.lb_tracks.curselection())))
-        self.lb_tracks.bind("<Double-1>", lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+        self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
     def __load_settings(self):
         settings_path = self.path + '/settings.json'
         with open(settings_path, 'r', encoding='utf-8') as settings_file:
             self.settings = json.load(settings_file)
-        self.volume.set(float(self.settings["volume"]))
-    
+        self.volume.set(float(self.settings['volume']))
+        self.fade = int(self.settings['fade'])
+        self.shuffle = self.settings['shuffle']
+
     def save_settings(self):
         settings_path = self.path + '/settings.json'
-        self.settings["volume"] = self.volume.get()
+        self.settings['volume'] = self.volume.get()
+        self.settings['fade'] = self.fade
+        self.settings['shuffle'] = self.shuffle
+        self.settings['playlist'] = self.playlist.name
         del self.settings['playlists']
         self.settings['playlists'] = {}
         for playlist, obj in self.playlists.items():
@@ -266,7 +274,7 @@ class MusicBox:
                 self.playlists[playlist].add_track(self._clean_filename(track), track)
                 self.tracks[track].add_to_playlist(playlist)
         if self.settings['playlist'] != 'All':
-            self.playlist = self.playlists[self.settings["playlist"]]
+            self.playlist = self.playlists[self.settings['playlist']]
         else:
             self.playlist = self.playlist_all
 
@@ -337,8 +345,9 @@ class MusicBox:
         self.sld_progress.set(100)
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.fadeout(1000) # may have ot swap for manual fade in/out as it blocks during fadeout
-        # mixer.music.stop()
+        mixer.music.fadeout(1000)
+        
+        self.transition()
 
     def forward(self, event):
         # Update track_pos with elapsed time
@@ -438,19 +447,21 @@ class MusicBox:
         return hours, mins, secs
 
     def _on_frame_configure(self, event):
-        self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox("all"))
+        self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox('all'))
 
     def _on_mousewheel(self, event):
-        self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), 'units')
 
     def _bind_mousewheel(self, event):
-        self.cnv_playlists.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.cnv_playlists.bind_all('<MouseWheel>', self._on_mousewheel)
 
     def _unbind_mousewheel(self, event):
-        self.cnv_playlists.unbind_all("<MouseWheel>")
-
-    def queue_track(self, name):
-        pass
+        self.cnv_playlists.unbind_all('<MouseWheel>')
+    
+    def transition(self):
+        mixer.music.fadeout(self.fade)
+        mixer.music.unload()
+        self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle)))
 
     def play_track(self, name):
         self.track_name = name
@@ -460,7 +471,7 @@ class MusicBox:
         self.track_pos = 0  # Track position in ms
         self.is_playing = False
         self.last_play_time = None
-        
+
         playlists = self.tracks[self.filename].get_playlists()
         for i, var in enumerate(self.playlist_var_names):
             if var.get() in playlists:
@@ -474,7 +485,7 @@ class MusicBox:
         mixer.music.load(f'{self.filepath}/{self.filename}')
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.play()
+        mixer.music.play(fade_ms=self.fade)
         mixer.music.pause()
         self.start(None)
         self.play(None)
@@ -517,15 +528,18 @@ class Playlist:
     def __init__(self, name):
         self.name = name
         self.tracks = {}
+        self.new_queue()
 
     def set_name(self, name):
         self.name = name
 
     def add_track(self, name, file):
         self.tracks[name] = file
+        self.queue.append(name)
 
     def remove_track(self, name):
         del self.tracks[name]
+        self.queue.remove(name)
 
     def get_track_names(self):
         names = []
@@ -541,6 +555,32 @@ class Playlist:
 
     def get_track(self, name):
         return self.tracks[name]
+    
+    def get_queue(self):
+        return self.queue
+    
+    def shuffle_queue(self):
+        random.shuffle(self.queue)
+        
+    def queue_pop(self, shuffle):
+        track = self.queue[0]
+        self.queue = self.queue[1:]
+        if self.queue_empty():
+            self.new_queue()
+            if shuffle:
+                self.shuffle_queue()
+        return self.tracks[track]
+    
+    def new_queue(self):
+        self.queue = []
+        for track, _ in self.tracks.items():
+            self.queue.append(track)
+            
+    def queue_empty(self):
+        if len(self.queue) == 0:
+            return True
+        else:
+            return False
 
 class Track:
     def __init__(self):

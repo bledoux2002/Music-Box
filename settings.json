@@ -1,5 +1,7 @@
 {
     "volume": 1.0,
+    "fade": 500,
+    "shuffle": false,
     "playlist": "All",
     "playlists": {
         "Combat": [
