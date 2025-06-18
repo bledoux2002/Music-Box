@@ -469,12 +469,18 @@ class MusicBox:
     def change_playlist(self, event):
         print(self.var_playlist.get())
 
-    def toggle_playlist(self, val):
-        if val >=0:
-            self.playlists[val].add_track(self.track_name, self.file)
-        else:
-            self.playlists[-val-1].remove_track(self.track_name)
-        self._update_playlist(val)
+    def toggle_playlist(self):
+        for i, var in enumerate(self.var_playlists):
+            val = var.get()
+            playlists = list(self.playlists.keys())
+            if val >= 0:
+                self.playlists[playlists[val]].add_track(self.track_name, self.filename)
+            else:
+                try:
+                    self.playlists[playlists[-val-1]].remove_track(self.track_name)
+                except:
+                    pass
+            self._update_playlist(val)
 
     def _update_playlist(self, num): #update playlist frame
         if num >=0:
