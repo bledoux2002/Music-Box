@@ -44,6 +44,10 @@ Adaptive Music Box is a desktop music player application built with Python and T
 ```sh
 python [music_player.py](http://_vscodecontentref_/0)
 ```
+Alternatively, you can compile into an executable yourself:
+```sh
+PyInstaller --onefile --add-data "files;files" --add-data "settings.json;." music_box.py --windowed
+```
 
 #### Executable
 Run executable within a folder (files and settings will be stored here)
