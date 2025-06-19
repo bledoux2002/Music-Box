@@ -177,6 +177,8 @@ class MusicBox:
             self.playlist = self.playlists[self.settings['playlist']]
         else:
             self.playlist = self.playlist_all
+        if self.shuffle:
+            self.shuffle_songs()
 
     def __setup_download_frame(self):
         '''

@@ -46,7 +46,7 @@ python [music_player.py](http://_vscodecontentref_/0)
 ```
 Alternatively, you can compile into an executable yourself:
 ```sh
-PyInstaller --onefile --add-data "files;files" --add-data "settings.json;." music_box.py --windowed
+PyInstaller --onefile --windowed music_box.py
 ```
 
 #### Executable

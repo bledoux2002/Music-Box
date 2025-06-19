@@ -5,7 +5,7 @@ a = Analysis(
     ['music_box.py'],
     pathex=[],
     binaries=[],
-    datas=[('files', 'files'), ('settings.json', '.')],
+    datas=[],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
