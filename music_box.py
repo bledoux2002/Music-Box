@@ -282,7 +282,7 @@ class MusicBox:
         self.btn_start = Button(self.frm_buttons, text='|<<')
         self.btn_play = Button(self.frm_buttons, text='>/||')
         self.btn_end = Button(self.frm_buttons, text='>>|')
-        self.sld_fade = Scl(self.frm_buttons, orient=HORIZONTAL, from_=0, to=5000, resolution=100, variable=self.fade)
+        self.sld_fade = Scl(self.frm_buttons, orient=HORIZONTAL, from_=0, to=5000, resolution=100, variable=self.fade) #ttk Scale doesn't have resolution option, so fade will use classic Scale
         self.var_fade = StringVar(value=f'Fade (ms)')
         self.lbl_fade = Label(self.frm_buttons, textvariable=self.var_fade)
         self.cbtn_shuffle = Checkbutton(self.frm_buttons, text='Shuffle', variable=self.shuffle, command=self.shuffle_songs)
