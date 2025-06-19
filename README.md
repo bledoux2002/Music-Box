@@ -27,8 +27,9 @@ Adaptive Music Box is a desktop music player application built with Python and T
 
 ### __Installation__
 
-#### Executable
+#### Executable (Windows)
 1. Download music_player.exe in `/dist`
+Note: I believe the provided executable only works on Windows machines. For other systems see **Running the Application: Python Program**.
 
 #### Loose Files
 1. Clone or download this repository.
@@ -44,7 +45,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
 ```sh
 python [music_player.py](http://_vscodecontentref_/0)
 ```
-Alternatively, you can compile into an executable yourself:
+Alternatively, you can compile into an executable yourself. I am not sure but I believe this will create an executable compatible with the system it is run on:
 ```sh
 PyInstaller --onefile --windowed music_box.py --name "Music Box"
 ```
@@ -78,4 +79,4 @@ Run executable within a folder (files and settings will be stored here)
 ## Future Plans
 - Changing track names in the Listbox similarly to chaning playlist names
 - Filtering track listbox using Entry to matching names
-- Support for non-Windows machines
+- Support for non-Windows machines, as I am unsure if file structure operations will function correctly on non-Windows systems.
