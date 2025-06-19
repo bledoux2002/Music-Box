@@ -47,7 +47,7 @@ python [music_player.py](http://_vscodecontentref_/0)
 ```
 Alternatively, you can compile into an executable yourself. I am not sure but I believe this will create an executable compatible with the system it is run on:
 ```sh
-PyInstaller --onefile --windowed music_box.py --name "Music Box"
+PyInstaller --onefile --windowed music_box.py --name "Music Box" --icon icon.ico
 ```
 
 #### Executable
