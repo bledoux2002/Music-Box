@@ -80,3 +80,8 @@ Run executable within a folder (files and settings will be stored here)
 - Changing track names in the Listbox similarly to chaning playlist names
 - Filtering track listbox using Entry to matching names
 - Support for non-Windows machines, as I am unsure if file structure operations will function correctly on non-Windows systems.
+
+## Resources
+- [yt_dlp](https://github.com/yt-dlp/yt-dlp)
+- [pygame](https://www.pygame.org/)
+- [mutagen](https://github.com/quodlibet/mutagen)
