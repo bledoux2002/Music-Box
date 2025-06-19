@@ -409,22 +409,64 @@ class MusicBox:
                 for url in URLs:
                     # Check if cancelled before starting each download
                     if self.cancel_flag.is_set():
-                        self.root.after(0, self.var_status.set, 'Download cancelled')
+                        self.root.after(0, lambda: self.var_status.set('Download cancelled'))
                         return
+                    
+                    # Extract info first to check if it's a playlist
+                    info = ydl.extract_info(url, download=False)
+                    
+                    if 'entries' in info:
+                        # It's a playlist
+                        entries = info['entries']
+                        total_entries = len(entries)
                         
-                    info = ydl.extract_info(url, download=True)
-                    filename = ydl.prepare_filename(info)
-                    mp3_filename = os.path.splitext(filename)[0] + '.mp3'
-                    basename = os.path.basename(mp3_filename)
-                    self.playlist_all.add_track(self._clean_filename(basename), basename)
-                    self.tracks[basename] = Track()
-                    self.change_playlist(None)
-                    self.root.after(0, self.var_status.set, 'Success!')
+                        for i, entry in enumerate(entries):
+                            if self.cancel_flag.is_set():
+                                self.root.after(0, lambda: self.var_status.set('Download cancelled'))
+                                return
+                            
+                            # Update status for playlist progress
+                            self.root.after(0, lambda i=i, total=total_entries: 
+                                          self.var_status.set(f'Downloading playlist item {i+1}/{total}...'))
+                            
+                            try:
+                                # Download individual entry
+                                single_info = ydl.extract_info(entry['webpage_url'], download=True)
+                                filename = ydl.prepare_filename(single_info)
+                                mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                                basename = os.path.basename(mp3_filename)
+                                
+                                # Add each track individually and update UI immediately
+                                self.playlist_all.add_track(self._clean_filename(basename), basename)
+                                self.tracks[basename] = Track()
+                                
+                                # Update UI immediately after each track is downloaded
+                                self.root.after(0, lambda: self.change_playlist(None))
+                                
+                            except Exception as e:
+                                print(f"Error downloading playlist item {i+1}: {e}")
+                                continue
+                            
+                        # Final status update after all playlist items are downloaded
+                        self.root.after(0, lambda: self.var_status.set(f'Playlist download complete! Downloaded {total_entries} tracks.'))
+                        
+                    else:
+                        # It's a single video
+                        single_info = ydl.extract_info(url, download=True)
+                        filename = ydl.prepare_filename(single_info)
+                        mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                        basename = os.path.basename(mp3_filename)
+                        
+                        self.playlist_all.add_track(self._clean_filename(basename), basename)
+                        self.tracks[basename] = Track()
+                        self.root.after(0, lambda: self.change_playlist(None))
+                        self.root.after(0, lambda: self.var_status.set('Success!'))
+                        
         except Exception as e:
             if self.cancel_flag.is_set():
-                self.root.after(0, self.var_status.set, 'Download cancelled')
+                self.root.after(0, lambda: self.var_status.set('Download cancelled'))
             else:
-                self.root.after(0, self.var_status.set, f'Error: {e}')
+                self.root.after(0, lambda e=e: self.var_status.set(f'Error: {e}'))
 
     def cancel_download(self):
         '''
