@@ -171,8 +171,11 @@ class MusicBox:
         for playlist, tracks in saved_lists.items():
             self.playlists[playlist] = Playlist(playlist)
             for track in tracks:
-                self.playlists[playlist].add_track(self._clean_filename(track), track)
-                self.tracks[track].add_to_playlist(playlist)
+                try:
+                    self.playlists[playlist].add_track(self._clean_filename(track), track)
+                    self.tracks[track].add_to_playlist(playlist)
+                except:
+                    pass
         if self.settings['playlist'] != 'All':
             self.playlist = self.playlists[self.settings['playlist']]
         else:
@@ -508,20 +511,24 @@ class MusicBox:
         '''
         Set player back to start of track
         '''
-        self.sld_progress.set(0)
-        self.var_progress.set('0:00:00')
-        mixer.music.rewind()
-        self.last_play_time = None
-        self.track_pos = 0
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url:
+            self.sld_progress.set(0)
+            self.var_progress.set('0:00:00')
+            mixer.music.rewind()
+            self.last_play_time = None
+            self.track_pos = 0
 
     def prev(self, event):
         '''
         Go back to previous track
         '''
-        track = self.prev_tracks[0]
-        self.prev_tracks = self.prev_tracks[1:]
-        self.playlist.queue.insert(0, self.track_name)
-        self.play_track(track)
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url and self.prev_tracks:
+            track = self.prev_tracks[0]
+            self.prev_tracks = self.prev_tracks[1:]
+            self.playlist.queue.insert(0, self.track_name)
+            self.play_track(track)
 
     def play(self, event):
         '''
@@ -546,7 +553,8 @@ class MusicBox:
         '''
         Go to end of track and fadeout, then transition to next track
         '''
-        if self.track_name != '':
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url and self.track_name != '':
             self.sld_progress.set(100)
             hours, mins, secs = self._get_track_len(self.track_length)
             self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
@@ -805,12 +813,14 @@ class MusicBox:
         '''
         Change playlist using keyboard
         '''
-        playlists = list(self.playlists.keys())
-        if num == -1:
-            self.cb_playlists.set('All')
-        else:
-            self.cb_playlists.set(playlists[num])
-        self.change_playlist(None)
+        focus = self.root.focus_get()
+        if focus != self.cb_playlists and focus != self.ent_url:
+            playlists = list(self.playlists.keys())
+            if num == -1:
+                self.cb_playlists.set('All')
+            else:
+                self.cb_playlists.set(playlists[num])
+            self.change_playlist(None)
 
     def change_playlist(self, event):
         '''
