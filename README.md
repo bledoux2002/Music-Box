@@ -79,6 +79,7 @@ Run executable within a folder (files and settings will be stored here)
 ## Future Plans
 - Changing track names in the Listbox similarly to chaning playlist names
 - Filtering track listbox using Entry to matching names
+- Changing listbox to multiple selections so multiple tracks can be added to a playlist at once
 - Support for non-Windows machines, as I am unsure if file structure operations will function correctly on non-Windows systems.
 
 ## Resources
