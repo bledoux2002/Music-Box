@@ -44,7 +44,7 @@ class MusicBox:
         self.root = root
         root.configure(bg='medium purple')
         root.minsize(750, 450)
-        self.root.title('Adaptive Music Box')
+        self.root.title('Music Box')
         self.root.protocol('WM_DELETE_WINDOW', self.on_close)
 
         self.style_default = Style()
@@ -118,23 +118,23 @@ class MusicBox:
                 self.settings = json.load(settings_file)
         else:
             self.settings = {
-                "volume": 0.5,
-                "fade": 1000,
-                "current track": "",
-                "current position": 0.0,
-                "shuffle": False,
-                "playlist": "All",
-                "playlists": {
-                    "Playlist 0": [],
-                    "Playlist 1": [],
-                    "Playlist 2": [],
-                    "Playlist 3": [],
-                    "Playlist 4": [],
-                    "Playlist 5": [],
-                    "Playlist 6": [],
-                    "Playlist 7": [],
-                    "Playlist 8": [],
-                    "Playlist 9": []
+                'volume': 0.5,
+                'fade': 1000,
+                'current track': '',
+                'current position': 0.0,
+                'shuffle': False,
+                'playlist': 'All',
+                'playlists': {
+                    'Playlist 0': [],
+                    'Playlist 1': [],
+                    'Playlist 2': [],
+                    'Playlist 3': [],
+                    'Playlist 4': [],
+                    'Playlist 5': [],
+                    'Playlist 6': [],
+                    'Playlist 7': [],
+                    'Playlist 8': [],
+                    'Playlist 9': []
                 }
             }
         self.volume.set(float(self.settings['volume']))
@@ -373,7 +373,7 @@ class MusicBox:
         '''
         # Check if download should be cancelled
         if self.cancel_flag.is_set():
-            raise Exception("Download cancelled by user")
+            raise Exception('Download cancelled by user')
             
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
@@ -446,7 +446,7 @@ class MusicBox:
                                 self.root.after(0, lambda: self.change_playlist(None))
                                 
                             except Exception as e:
-                                print(f"Error downloading playlist item {i+1}: {e}")
+                                print(f'Error downloading playlist item {i+1}: {e}')
                                 continue
                             
                         # Final status update after all playlist items are downloaded
@@ -489,7 +489,7 @@ class MusicBox:
                     try:
                         os.remove(os.path.join(self.filepath, fname))
                     except Exception as e:
-                        print(f"Error removing {fname}: {e}")
+                        print(f'Error removing {fname}: {e}')
 
             self.var_status.set('Download cancelled')
         except Exception as e:
@@ -767,7 +767,7 @@ class MusicBox:
         '''
         self.top = Toplevel(self.root)
         self.top.title('Confirmation')
-        self.top.geometry(f"300x100+{self.root.winfo_x() + 250}+{self.root.winfo_y() + 150}")
+        self.top.geometry(f'300x100+{self.root.winfo_x() + 250}+{self.root.winfo_y() + 150}')
         self.top.grab_set()
         warning = 'Delete file?'
         Label(self.top, text=warning).pack(padx=20, pady=10)
@@ -906,13 +906,13 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        with open("error_log.txt", "w", encoding="utf-8") as f:
+        with open('error_log.txt', 'w', encoding='utf-8') as f:
             f.write(traceback.format_exc())
         # Optionally, show a message box to the user
         try:
             root = Tk()
             root.withdraw()
-            messagebox.showerror("Error", "An unexpected error occurred. See error_log.txt for details.")
+            messagebox.showerror('Error', 'An unexpected error occurred. See error_log.txt for details.')
             root.destroy()
         except:
             pass

@@ -46,7 +46,7 @@ python [music_player.py](http://_vscodecontentref_/0)
 ```
 Alternatively, you can compile into an executable yourself:
 ```sh
-PyInstaller --onefile --windowed music_box.py
+PyInstaller --onefile --windowed music_box.py --name "Music Box"
 ```
 
 #### Executable

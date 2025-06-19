@@ -9,6 +9,7 @@
 
 ## Ways to Contribute
 
+- **Compatibility**: Currently only confirmed functional on Windows. Main issues are likely with file handling and packaging into executable.
 - **Coding Style**: Codebase is currently very messy. But it works. So whatever. Compartmentalizing code, even just reogranizing existing functions into more descriptive sections would be helpful.
 - **Efficiency**: A lot of redundant code. Same as **Coding Style**. Particularly downloading a playlist of videos with `yt_dlp` will first download the following once for every file to get the information, then again when actually downloading them. This was the only way to add the tracks as they were downloaded, but time-wise it hardly helps since these are downloaded 2n times for n videos.
 ```
