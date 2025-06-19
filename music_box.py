@@ -493,6 +493,7 @@ class MusicBox:
         except Exception as e:
             self.var_status.set(f'Error cancelling download: {e}')
 
+
 # Playback
 
     def remove_focus(self, event):
@@ -759,6 +760,9 @@ class MusicBox:
         self.play(None)
 
     def del_track(self, name):
+        '''
+        Prompts user to confirm deletion of track
+        '''
         self.top = Toplevel(self.root)
         self.top.title('Confirmation')
         self.top.geometry(f"300x100+{self.root.winfo_x() + 250}+{self.root.winfo_y() + 150}")
@@ -773,6 +777,9 @@ class MusicBox:
         Button(frm_buttons, text='CANCEL', width=10, command=self.top.destroy).pack(side=LEFT, padx=5)
 
     def on_delete(self, name):
+        '''
+        Deletes file
+        '''
         filename = self.playlist_all.get_track(name)
         if self.track_name == name:
             mixer.music.stop()
@@ -793,6 +800,9 @@ class MusicBox:
         self.top.destroy()
 
     def set_playlist(self, num):
+        '''
+        Change playlist using keyboard
+        '''
         playlists = list(self.playlists.keys())
         if num == -1:
             self.cb_playlists.set('All')
@@ -839,6 +849,9 @@ class MusicBox:
                         pass
 
     def update_playlist_name(self, event):
+        '''
+        Change playlist name based on Combobox
+        '''
         if self.playlist.name == 'All':
             return
         oldname = self.playlist.name
