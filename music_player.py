@@ -28,7 +28,7 @@ class MusicBox:
         if not os.path.exists(self.filepath):
             os.makedirs(self.filepath)
         self.files = os.listdir(self.filepath)
-        
+        self.cancel_flag = threading.Event()
         self.settings = {}
 
         # Mixer
@@ -194,8 +194,9 @@ class MusicBox:
         self.lbl_url = Label(self.frm_download, text='URL:')
         self.ent_url = Entry(self.frm_download)
         self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws')
-        self.btn_url = Button(self.frm_download, text='Download')
+        self.btn_url = Button(self.frm_download, text='Download', command=self.download)
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
+        self.btn_cancel = Button(self.frm_download, text='Cancel', command=self.cancel_download)
         self.var_status = StringVar(value='Please enter a URL')
         self.lbl_status = Label(self.frm_download, textvariable=self.var_status)
 
@@ -203,9 +204,8 @@ class MusicBox:
         self.ent_url.grid(row=0, column=1, sticky='ew')
         self.btn_url.grid(row=0, column=2, padx=5, sticky='e')
         self.bar_progress.grid(row=1, column=1, pady=5, sticky='ew')
+        self.btn_cancel.grid(row=1, column=2, padx=5, sticky='e')
         self.lbl_status.grid(row=2, column=1, sticky='ew')
-
-        self.btn_url.bind('<Button-1>', self.download)
 
     def __setup_playlists_frame(self):
         '''
@@ -369,6 +369,10 @@ class MusicBox:
         '''
         Update progress bar and status
         '''
+        # Check if download should be cancelled
+        if self.cancel_flag.is_set():
+            raise Exception("Download cancelled by user")
+            
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             downloaded_bytes = d.get('downloaded_bytes', 0)
@@ -381,7 +385,10 @@ class MusicBox:
             self.root.after(0, lambda: self.bar_progress.config(value=100))
             self.root.after(0, lambda: self.var_status.set('Download finished, processing...'))
 
-    def download(self, event):
+    def download(self):
+        # Clear any previous cancel flag
+        self.cancel_flag.clear()
+        
         self.var_status.set('Preparing...')
         if mixer.music.get_busy():
             mixer.music.stop()
@@ -393,13 +400,19 @@ class MusicBox:
         url = self.ent_url.get()
         URLs = [url]
         # Run download in a separate thread to avoid blocking the GUI
-        threading.Thread(target=self._download_thread, args=(URLs,), daemon=True).start()
+        self.download_thread = threading.Thread(target=self._download_thread, args=(URLs,), daemon=True)
+        self.download_thread.start()
 
     def _download_thread(self, URLs):
         try:
             with YoutubeDL(self.ydl_opts) as ydl:
                 for url in URLs:
-                    info = ydl.extract_info(url, download=True)  # Don't download yet
+                    # Check if cancelled before starting each download
+                    if self.cancel_flag.is_set():
+                        self.root.after(0, self.var_status.set, 'Download cancelled')
+                        return
+                        
+                    info = ydl.extract_info(url, download=True)
                     filename = ydl.prepare_filename(info)
                     mp3_filename = os.path.splitext(filename)[0] + '.mp3'
                     basename = os.path.basename(mp3_filename)
@@ -408,8 +421,29 @@ class MusicBox:
                     self.change_playlist(None)
                     self.root.after(0, self.var_status.set, 'Success!')
         except Exception as e:
-            self.root.after(0, self.var_status.set, f'Error: {e}')
+            if self.cancel_flag.is_set():
+                self.root.after(0, self.var_status.set, 'Download cancelled')
+            else:
+                self.root.after(0, self.var_status.set, f'Error: {e}')
 
+    def cancel_download(self):
+        '''
+        Cancel the current download
+        '''
+        try:
+            self.cancel_flag.set()
+            self.var_status.set('Cancelling download...')
+            self.bar_progress.config(value=0)
+            
+            # If download thread is running, wait for it to finish
+            if self.download_thread and self.download_thread.is_alive():
+                # Give it a moment to respond to the cancel flag
+                self.root.after(1000, lambda: self.var_status.set('Download cancelled') if self.cancel_flag.is_set() else None)
+            else:
+                self.var_status.set('No active download to cancel')
+                
+        except Exception as e:
+            self.var_status.set(f'Error cancelling download: {e}')
 
 # Playback
 
