@@ -245,7 +245,7 @@ class MusicBox:
         self.root.bind('7', lambda e: self.set_playlist(7))
         self.root.bind('8', lambda e: self.set_playlist(8))
         self.root.bind('9', lambda e: self.set_playlist(9))
-        self.cb_playlists.bind('<Return>', self.update_playlist_name)
+        self.cb_playlists.bind('<Return>', self.rename_playlist)
         self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
         self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
@@ -860,14 +860,22 @@ class MusicBox:
                     except:
                         pass
 
-    def update_playlist_name(self, event):
+    def rename_playlist(self, event):
         '''
         Change playlist name based on Combobox
         '''
-        if self.playlist.name == 'All':
-            return
         oldname = self.playlist.name
         newname = self.cb_playlists.get()
+        if oldname == 'All':
+            messagebox.showerror('Can\'t change name', '"All" playlist name cannot be changed.')
+            self.cb_playlists.set('All')
+            return
+        if newname in self.playlists.keys():
+            if newname == oldname:
+                return
+            messagebox.showerror('Can\'t change name', 'Playlist name already in use.')
+            self.cb_playlists.set(oldname)
+            return
         self.playlists[oldname].set_name(newname)
         self.playlists = {name if name != oldname else newname: playlist for name, playlist in self.playlists.items()}
         self.playlist = self.playlists[newname]
