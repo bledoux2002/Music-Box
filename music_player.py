@@ -428,7 +428,7 @@ class MusicBox:
 
     def cancel_download(self):
         '''
-        Cancel the current download
+        Cancel the current download and remove any .part files
         '''
         try:
             self.cancel_flag.set()
@@ -436,12 +436,18 @@ class MusicBox:
             self.bar_progress.config(value=0)
             
             # If download thread is running, wait for it to finish
-            if self.download_thread and self.download_thread.is_alive():
-                # Give it a moment to respond to the cancel flag
-                self.root.after(1000, lambda: self.var_status.set('Download cancelled') if self.cancel_flag.is_set() else None)
-            else:
-                self.var_status.set('No active download to cancel')
-                
+            if hasattr(self, 'download_thread') and self.download_thread and self.download_thread.is_alive():
+                self.download_thread.join(timeout=2)  # Wait up to 2 seconds for thread to finish
+
+            # Remove any .part files in the download directory
+            for fname in os.listdir(self.filepath):
+                if fname.endswith('.part'):
+                    try:
+                        os.remove(os.path.join(self.filepath, fname))
+                    except Exception as e:
+                        print(f"Error removing {fname}: {e}")
+
+            self.var_status.set('Download cancelled')
         except Exception as e:
             self.var_status.set(f'Error cancelling download: {e}')
 
