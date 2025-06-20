@@ -1,10 +1,11 @@
 {
+    "current playlist": "All",
+    "current track": "A Critical Chance [46XqSacg4IU].mp3",
+    "track position": 0.0,
+    "queue position": 0,
+    "shuffle": false,
     "volume": 1.0,
     "fade": 500,
-    "current track": "A Critical Chance [46XqSacg4IU].mp3",
-    "current position": 0.0,
-    "shuffle": false,
-    "playlist": "All",
     "playlists": {
         "Exploring": [],
         "Sneaking": [

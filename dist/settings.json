@@ -1,0 +1,21 @@
+{
+    "current playlist": "All",
+    "current track": "",
+    "track position": 0.0,
+    "queue position": 0,
+    "shuffle": false,
+    "volume": 0.5,
+    "fade": 1000,
+    "playlists": {
+        "Playlist 0": [],
+        "Playlist 1": [],
+        "Playlist 2": [],
+        "Playlist 3": [],
+        "Playlist 4": [],
+        "Playlist 5": [],
+        "Playlist 6": [],
+        "Playlist 7": [],
+        "Playlist 8": [],
+        "Playlist 9": []
+    }
+}

@@ -9,85 +9,38 @@ from tkinter.ttk import *
 from tkinter import messagebox
 from tkinter import Scale as Scl
 from yt_dlp import YoutubeDL
-# import mutagen
 from mutagen.mp3 import MP3
 from pygame import mixer
 from tracks import Playlist, Track
 
 class MusicBox:
     def __init__(self, root):
+        
         # Directory Information
-        if getattr(sys, 'frozen', False):
-            # Running as PyInstaller EXE
-            self.base_path = os.path.dirname(sys.executable)
-        else:
-            # Running as script
-            self.base_path = os.path.dirname(os.path.abspath(__file__))
-        self.filepath = os.path.join(self.base_path, 'files')
-        self.settings_path = os.path.join(self.base_path, 'settings.json')
-        if not os.path.exists(self.filepath):
-            os.makedirs(self.filepath)
-        self.files = os.listdir(self.filepath)
-        self.cancel_flag = threading.Event()
-        self.settings = {}
+        self.base_path = None
+        self.filepath = None
+        self.settings_path = None
+        self.__setup_directory()
 
-        # Mixer
-        # add 2 channels for fade in/out
-        mixer.init()
+        # Initialize Attributes
+        self.root = root
+        self.settings = {}
+        self.filename = ''
+        self.track_name = ''
+        self.track_pos = 0.0
+        self.tracks = {}
+        self.playlists = {}
+        self.playlist_all = Playlist('All')
+        self.current_playlist = self.playlist_all
+        self.var_playlist = StringVar()
+        self.prev_tracks = []
+        self.queue = [] # replace self.prev_tracks elsewhere in code
+        self.queue_pos = 0
+        self.shuffle = BooleanVar()
         self.volume = DoubleVar()
         self.fade = IntVar()
-        self.cur_track = None
-        self.prev_tracks = []
-        self.shuffle = BooleanVar()
-
-        # TKinter Setup
-        self.root = root
-        root.configure(bg='medium purple')
-        root.minsize(750, 450)
-        self.root.title('Music Box')
-        self.root.protocol('WM_DELETE_WINDOW', self.on_close)
-
-        self.style_default = Style()
-        self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
-        self.style_default.configure(self.style_name, borderwidth=2, relief='solid')
-
-        self.root.columnconfigure(0, weight=1)
-        self.root.columnconfigure(1, weight=1)
-        self.root.rowconfigure(0, weight=0)
-        self.root.rowconfigure(1, weight=1, minsize=100)
-        
-        self.root.bind('<Escape>', self.remove_focus)
-        
         self.progress_bar_in_use = False
-
-        self.playlist_all = Playlist('All')
-        self.tracks = {}
-        for track in self.files:
-            self.playlist_all.add_track(self._clean_filename(track), track)
-            self.tracks[track] = Track()
-
-        # TKinter Vars
-        self.var_playlist = StringVar()
-
-        # Setup
-        self.__load_settings()
-        self.__setup_playlists()
-
-        # Current Track and Playlist
-        # self.filename = self.playlist.queue_pop(self.shuffle.get())
-        self.filename = self.cur_track
-        if self.filename:
-            self.track_name = self._clean_filename(self.filename)
-        else:
-            self.track_name = ''
-        mixer.music.set_volume(self.volume.get())
-
-        # Setup Frames
-        self.__setup_download_frame()
-        self.__setup_playlists_frame()
-        self.__setup_player_frame()
-        
-        # YT_DLP Options
+        self.cancel_flag = threading.Event()
         self.ydl_opts = {
             'format': 'bestaudio/best',
             'windowsFilenames': True,
@@ -102,12 +55,54 @@ class MusicBox:
             'nooverwrites': True,
         }
 
-        if (self.filename):
-            self.play_track(self.track_name)
-            self.track_pos = float(self.settings['current position'])
-            self.sld_progress.set(100 * self.track_pos / self.track_length)
-            self.seek_track(None)
-            self.play(None)
+        mixer.init()
+
+        # Setup Methods
+        self.__setup_UI()
+        self.__load_settings()
+        self.__setup_playlists()
+        self.__setup_download_frame()
+        self.__setup_playlists_frame()
+        self.__setup_player_frame()
+
+    def __setup_directory(self):
+        '''
+        Assign directory paths based on whether program running as python file or executable
+        '''
+        if getattr(sys, 'frozen', False):
+            # Running as PyInstaller EXE
+            self.base_path = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            self.base_path = os.path.dirname(os.path.abspath(__file__))
+        self.filepath = os.path.join(self.base_path, 'files')
+        self.settings_path = os.path.join(self.base_path, 'settings.json')
+        if not os.path.exists(self.filepath):
+            os.makedirs(self.filepath)
+
+    def __setup_UI(self):
+        '''
+        Set up main window UI
+        '''
+        # Configure
+        self.root.configure(bg='medium purple')
+        self.root.minsize(750, 450)
+        self.root.title('Music Box')
+        self.root.protocol('WM_DELETE_WINDOW', self.on_close)
+
+        # Style
+        self.style_default = Style()
+        self.style_name = 'Outlined.TFrame' # helps show where frames are, mostly temporary
+        self.style_default.configure(self.style_name, borderwidth=2, relief='solid')
+
+        # Grid
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=1)
+        self.root.rowconfigure(0, weight=0)
+        self.root.rowconfigure(1, weight=1, minsize=100)
+
+        # Bindings
+        self.root.bind('<Escape>', self.remove_focus)
 
     def __load_settings(self):
         '''
@@ -118,12 +113,13 @@ class MusicBox:
                 self.settings = json.load(settings_file)
         else:
             self.settings = {
+                'current playlist': 'All',
+                'current track': None,
+                'track position': 0.0,
+                'queue position': 0,
+                'shuffle': False,
                 'volume': 0.5,
                 'fade': 1000,
-                'current track': '',
-                'current position': 0.0,
-                'shuffle': False,
-                'playlist': 'All',
                 'playlists': {
                     'Playlist 0': [],
                     'Playlist 1': [],
@@ -137,50 +133,67 @@ class MusicBox:
                     'Playlist 9': []
                 }
             }
+
+        self.var_playlist.set(self.settings['current playlist'])
+        self.filename = self.settings['current track']
+        self.track_pos = float(self.settings['track position'])
+        self.queue_pos = int(self.settings['queue position'])
+        self.shuffle.set(self.settings['shuffle'])
         self.volume.set(float(self.settings['volume']))
         self.fade.set(int(self.settings['fade']))
-        self.cur_track = self.settings['current track']
-        self.shuffle.set(self.settings['shuffle'])
-        self.var_playlist.set(self.settings['playlist'])
+        files = os.listdir(self.filepath)
+        if self.filename and self.filename in files:
+            self.track_name = self._clean_filename(self.filename)
 
     def __save_settings(self):
         '''
         Saves settings to json file
         '''
-        if self.track_name != '':
+        # Get current position of track for next boot
+        if self.track_name:
             val = self.sld_progress.get()
             self.track_pos = float(val) * (self.track_length / 100)
         else:
             self.track_pos = 0.0
+
+        self.settings['current playlist'] = self.current_playlist.name
+        self.settings['current track'] = self.filename
+        self.settings['track position'] = self.track_pos
+        self.settings['queue position'] = self.queue_pos
+        self.settings['shuffle'] = self.shuffle.get()
         self.settings['volume'] = round(self.volume.get(), 2)
         self.settings['fade'] = self.fade.get()
-        self.settings['current track'] = self.filename
-        self.settings['current position'] = self.track_pos
-        self.settings['shuffle'] = self.shuffle.get()
-        self.settings['playlist'] = self.playlist.name
-        del self.settings['playlists']
         self.settings['playlists'] = {}
-        for playlist, obj in self.playlists.items():
-            self.settings['playlists'][playlist] = obj.get_tracks()
+        for name, obj in self.playlists.items():
+            self.settings['playlists'][name] = obj.get_tracks()
+
         with open(self.settings_path, 'w', encoding='utf-8') as settings_file:
             json.dump(self.settings, settings_file, indent=4)
 
     def __setup_playlists(self):
-        self.playlists = {}
+        '''
+        Create "All" playlist and load saved playlists from settings
+        '''
+        # Create Track objects, and add all tracks to "All" playlist
+        files = os.listdir(self.filepath)
+        for track in files:
+            self.playlist_all.add_track(self._clean_filename(track), track)
+            self.tracks[track] = Track()
+
+        # Create Playlist objects and add their tracks, and add playlists to Track objects
         saved_lists = self.settings['playlists']
         for playlist, tracks in saved_lists.items():
             self.playlists[playlist] = Playlist(playlist)
             for track in tracks:
-                try:
+                if track in files:
                     self.playlists[playlist].add_track(self._clean_filename(track), track)
                     self.tracks[track].add_to_playlist(playlist)
-                except:
-                    pass
-        if self.settings['playlist'] != 'All':
-            self.playlist = self.playlists[self.settings['playlist']]
-        else:
-            self.playlist = self.playlist_all
-        if self.shuffle:
+
+        # Assign current playlist
+        cur_playlist = self.settings['current playlist']
+        if cur_playlist != 'All':
+            self.current_playlist = self.playlists[cur_playlist]
+        if self.shuffle.get():
             self.shuffle_songs()
 
     def __setup_download_frame(self):
@@ -226,7 +239,7 @@ class MusicBox:
         self.cb_playlists = Combobox(self.frm_playlist, textvariable=self.var_playlist)
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_playlist)
-        for track in self.playlist.get_track_names():
+        for track in self.current_playlist.get_track_names():
             self.lb_tracks.insert(END, track)
 
         self.cb_playlists.grid(row=0, column=0, padx=10, pady=5, sticky='nw')
@@ -255,6 +268,7 @@ class MusicBox:
         '''
         Sets up track Player Frame
         '''
+
         self.frm_player = Frame(self.root, style=self.style_name)
         self.frm_player.grid(row=1, column=0, padx=25, pady=25, sticky='nsew')
         self.frm_player.columnconfigure(0, weight=0, minsize=100)
@@ -366,6 +380,13 @@ class MusicBox:
         self.frm_playlists_inner.bind('<Configure>', self._on_frame_configure)
         self.cnv_playlists.bind('<Enter>', self._bind_mousewheel)
         self.cnv_playlists.bind('<Leave>', self._unbind_mousewheel)
+
+        mixer.music.set_volume(self.volume.get())
+        if self.track_name:
+            self.play_track(self.track_name)
+            self.sld_progress.set(100 * self.track_pos / self.track_length)
+            self.seek_track(None)
+            self.play(None)
 
 
 # Download Frame
@@ -527,7 +548,7 @@ class MusicBox:
         if focus != self.cb_playlists and focus != self.ent_url and self.prev_tracks:
             track = self.prev_tracks[0]
             self.prev_tracks = self.prev_tracks[1:]
-            self.playlist.queue.insert(0, self.track_name)
+            self.current_playlist.queue.insert(0, self.track_name)
             self.play_track(track)
 
     def play(self, event):
@@ -566,9 +587,9 @@ class MusicBox:
         Shuffle current queue
         '''
         if self.shuffle.get():
-            self.playlist.shuffle_queue()
+            self.current_playlist.shuffle_queue()
         else:
-            self.playlist.new_queue()
+            self.current_playlist.new_queue()
 
     def forward(self, event):
         '''
@@ -735,7 +756,7 @@ class MusicBox:
         mixer.music.fadeout(self.fade.get())
         self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
-        self.play_track(self._clean_filename(self.playlist.queue_pop(self.shuffle.get())))
+        self.play_track(self._clean_filename(self.current_playlist.queue_pop(self.shuffle.get())))
 
     def play_track(self, name):
         '''
@@ -743,7 +764,7 @@ class MusicBox:
         '''
         self.track_name = name
         try:
-            self.filename = self.playlist.get_track(name)
+            self.filename = self.current_playlist.get_track(name)
         except:
             self.filename = self.playlist_all.get_track(name)
         self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
@@ -829,11 +850,11 @@ class MusicBox:
         '''
         playlist = self.cb_playlists.get()
         if playlist == 'All':
-            self.playlist = self.playlist_all
+            self.current_playlist = self.playlist_all
         else:
-            self.playlist = self.playlists[playlist]
+            self.current_playlist = self.playlists[playlist]
         self.lb_tracks.delete(0, END)
-        for track in self.playlist.get_track_names():
+        for track in self.current_playlist.get_track_names():
             self.lb_tracks.insert(END, track)
 
     def edit_playlists(self):
@@ -847,13 +868,13 @@ class MusicBox:
                 if val >= 0:
                     self.playlists[playlists[val]].add_track(self.track_name, self.filename)
                     self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].name)
-                    if playlists[val] == self.playlist.name:
+                    if playlists[val] == self.current_playlist.name:
                         self.lb_tracks.insert(END, self.track_name)
                 else:
                     try:
                         self.playlists[playlists[-val-1]].remove_track(self.track_name)
                         self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].name)
-                        if playlists[-val-1] == self.playlist.name:
+                        if playlists[-val-1] == self.current_playlist.name:
                             tracks = self.lb_tracks.get(0, END)
                             for i, track in enumerate(tracks):
                                 if track == self.track_name:
@@ -865,7 +886,7 @@ class MusicBox:
         '''
         Change playlist name based on Combobox
         '''
-        oldname = self.playlist.name
+        oldname = self.current_playlist.name
         newname = self.cb_playlists.get()
         if oldname == 'All':
             messagebox.showerror('Can\'t change name', '"All" playlist name cannot be changed.')
@@ -879,8 +900,8 @@ class MusicBox:
             return
         self.playlists[oldname].set_name(newname)
         self.playlists = {name if name != oldname else newname: playlist for name, playlist in self.playlists.items()}
-        self.playlist = self.playlists[newname]
-        for track in self.playlist.get_tracks():
+        self.current_playlist = self.playlists[newname]
+        for track in self.current_playlist.get_tracks():
             self.tracks[track].remove_from_playlist(oldname)
             self.tracks[track].add_to_playlist(newname)
         for var in self.var_playlists:
