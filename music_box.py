@@ -17,6 +17,7 @@ from tracks import Playlist, Track
 from ui_updater import UIUpdatePostProcessor
 
 class MusicBox:
+
     def __init__(self, root):
 
         # Directory Information
@@ -43,6 +44,8 @@ class MusicBox:
         self.shuffle = BooleanVar()
         self.volume = DoubleVar()
         self.fade = IntVar()
+        self.is_playing = False
+        self.last_play_time = None
 
         self.cur_download = 0
         self.progress_bar_in_use = False
@@ -244,8 +247,7 @@ class MusicBox:
         # Widgets
         self.lbl_url = Label(self.frm_download, text='URL(s):')
         self.ent_url = Entry(self.frm_download)
-        # self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws') # A DMCA-free default URL to download. Primarily for testing purposes
-        self.ent_url.insert(0, 'https://youtube.com/playlist?list=PLcDwtIU91kNHJ_mMU4Vm6xUEU3YdXt5qi&si=ignjhoU2H52g7k7D')
+        self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws') # A DMCA-free default URL to download. Primarily for testing purposes
         self.btn_download = Button(self.frm_download, text='Download', command=self.download)
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
         self.btn_cancel = Button(self.frm_download, text='Cancel', command=self.cancel_download)
@@ -438,7 +440,7 @@ class MusicBox:
 # Download Frame Functions
 
     def _extract_youtube_id(self, url):
-        """
+        '''
         Helper function to extract YouTube video ID from different formats.
 
         Supports:
@@ -448,7 +450,7 @@ class MusicBox:
         - https://m.youtube.com/watch?v=VIDEO_ID
         - URLs with additional parameters
         - Embedded URLs
-        """
+        '''
         if not url or not isinstance(url, str):
             return None
 
@@ -601,11 +603,38 @@ class MusicBox:
 
 # Playback
 
-    def remove_focus(self, event):
+    def play_track(self, name):
         '''
-        Removes focus on any widget to allow for volume controls thru keyboard
+        Finds the corresponding file and plays the track, while updating the UI
         '''
-        self.root.focus_set()
+        self.track_name = name
+        try:
+            self.filename = self.current_playlist.get_track(name)
+        except:
+            self.filename = self.playlist_all.get_track(name)
+        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
+        self.track_length = int(self.audio_info.length)
+        self.track_pos = 0  # Track position in ms
+        self.is_playing = False
+        self.last_play_time = None
+
+        playlists = self.tracks[self.filename].get_playlists()
+        for i, var in enumerate(self.playlist_var_names):
+            if var.get() in playlists:
+                self.var_playlists[i].set(i)
+            else:
+                self.var_playlists[i].set(-i-1)
+
+        mixer.music.stop()
+        mixer.music.unload()
+        self.var_title.set(self.track_name)
+        mixer.music.load(f'{self.filepath}/{self.filename}')
+        hours, mins, secs = self._get_track_len(self.track_length)
+        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
+        mixer.music.play(fade_ms=self.fade.get())
+        mixer.music.pause()
+        self.start(None)
+        self.play(None)
 
     def start(self, event):
         '''
@@ -802,32 +831,8 @@ class MusicBox:
         length %= 60
         secs = int(length)
 
-        return hours, mins, secs
+        return hours, mins, secs    
 
-    def _on_frame_configure(self, event):
-        '''
-        Uhhhh this might be unnecessary. The code is important but it might not need to be in this separate function
-        '''
-        self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox('all'))
-
-    def _on_mousewheel(self, event):
-        '''
-        Scrolls list of playlist checkboxes for current track
-        '''
-        self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), 'units')
-
-    def _bind_mousewheel(self, event):
-        '''
-        Helper function for only scrolling playlist checkboxes when hovering over them
-        '''
-        self.cnv_playlists.bind_all('<MouseWheel>', self._on_mousewheel)
-
-    def _unbind_mousewheel(self, event):
-        '''
-        Helper function for not scrolling playlsit checkboxes when not hovering over them
-        '''
-        self.cnv_playlists.unbind_all('<MouseWheel>')
-    
     def _transition(self):
         '''
         Helper function for fading track out and fading next track in
@@ -837,38 +842,8 @@ class MusicBox:
         mixer.music.unload()
         self.play_track(self.clean_filename(self.current_playlist.queue_pop(self.shuffle.get())))
 
-    def play_track(self, name):
-        '''
-        Finds the corresponding file and plays the track, while updating the UI
-        '''
-        self.track_name = name
-        try:
-            self.filename = self.current_playlist.get_track(name)
-        except:
-            self.filename = self.playlist_all.get_track(name)
-        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
-        self.track_length = int(self.audio_info.length)
-        self.track_pos = 0  # Track position in ms
-        self.is_playing = False
-        self.last_play_time = None
 
-        playlists = self.tracks[self.filename].get_playlists()
-        for i, var in enumerate(self.playlist_var_names):
-            if var.get() in playlists:
-                self.var_playlists[i].set(i)
-            else:
-                self.var_playlists[i].set(-i-1)
-
-        mixer.music.stop()
-        mixer.music.unload()
-        self.var_title.set(self.track_name)
-        mixer.music.load(f'{self.filepath}/{self.filename}')
-        hours, mins, secs = self._get_track_len(self.track_length)
-        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.play(fade_ms=self.fade.get())
-        mixer.music.pause()
-        self.start(None)
-        self.play(None)
+# Playlists
 
     def del_track(self, name):
         '''
@@ -992,13 +967,32 @@ class MusicBox:
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
         self.remove_focus(None)
 
-    def clean_filename(self, file):
+
+# Navigation
+
+    def _on_mousewheel(self, event):
         '''
-        Helper function for taking raw filename with ID and extension, and trimming to only name (based on yt_dlp default filename)
+        Scrolls list of playlist checkboxes for current track
         '''
-        index = file.index('[')
-        name = file[:index-1].replace('_', ' ')
-        return name
+        self.cnv_playlists.yview_scroll(int(-1*(event.delta/120)), 'units')
+
+    def _bind_mousewheel(self, event):
+        '''
+        Helper function for only scrolling playlist checkboxes when hovering over them
+        '''
+        self.cnv_playlists.bind_all('<MouseWheel>', self._on_mousewheel)
+
+    def _unbind_mousewheel(self, event):
+        '''
+        Helper function for not scrolling playlsit checkboxes when not hovering over them
+        '''
+        self.cnv_playlists.unbind_all('<MouseWheel>')
+
+    def remove_focus(self, event):
+        '''
+        Removes focus on any widget to allow for volume controls thru keyboard
+        '''
+        self.root.focus_set()
 
     def on_close(self):
         '''
@@ -1007,6 +1001,22 @@ class MusicBox:
         self.__save_settings()
         # Now destroy the window
         self.root.destroy()
+
+    def _on_frame_configure(self, event):
+        '''
+        Limits scrollable area to just the playlists
+        '''
+        self.cnv_playlists.configure(scrollregion=self.cnv_playlists.bbox('all'))
+
+# Helper Functions
+
+    def clean_filename(self, file):
+        '''
+        Helper function for taking raw filename with ID and extension, and trimming to only name (based on yt_dlp default filename)
+        '''
+        index = file.index('[')
+        name = file[:index-1].replace('_', ' ')
+        return name
 
     def _resource_path(self, relative_path):
         '''
@@ -1018,19 +1028,16 @@ class MusicBox:
             base_path = os.path.abspath('.')
         return os.path.join(base_path, relative_path)
 
-def main():
-    root = Tk()
-    MusicBox(root)
-    root.mainloop()
 
 if __name__ == '__main__':
     try:
-        main()
+        root = Tk()
+        MusicBox(root)
+        root.mainloop()
     except Exception as e:
-        with open('error_log.txt', 'w', encoding='utf-8') as f:
-            f.write(traceback.format_exc())
-        # Optionally, show a message box to the user
         try:
+            with open('error_log.txt', 'w', encoding='utf-8') as f:
+                f.write(traceback.format_exc())
             root = Tk()
             root.withdraw()
             messagebox.showerror('Error', 'An unexpected error occurred. See error_log.txt for details.')
