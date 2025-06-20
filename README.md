@@ -56,9 +56,9 @@ Run executable within a folder (files and settings will be stored here)
 ## Usage
 
 ### Downloading Files
-- YouTube files will be downloaded as MP3's. Click "Share" and "Copy Link" on the video. It works with playlists as well, although currently cannot be canceled.
-- Paste the URL into the box labeled URL, and click Download. Files will be downloaded to a `/files` folder in the same directory as the executable file.
-- Status messages will display directly below, and will display "Success!" once the download has completed.
+- YouTube files will be downloaded as MP3's. Click "Share" and "Copy Link" on the video. It works with playlists as well, although if a playlist is provided an edge case can arise if one of the videos contained is being played when it is reached.
+- Paste the URL(s) into the box labeled URL, and click Download. Files will be downloaded to a `/files` folder in the same directory as the executable file. If multiple URLs are provided, separate them with a comma (,). An additional space is optional.
+- Status messages will display directly below, and will update the user on the progress. If a playlist is being downloaded, the number of the current download will be displayed.
 
 ### Playback
 - The playback frame shows the current position in the current track, the length of the current track, the volume, and the fade in/out time, as well as which playlists the current track is in and if the current playlsit is being shuffled or not.

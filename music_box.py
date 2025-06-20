@@ -18,7 +18,7 @@ from ui_updater import UIUpdatePostProcessor
 
 class MusicBox:
     def __init__(self, root):
-        
+
         # Directory Information
         self.base_path = None
         self.filepath = None
@@ -28,7 +28,7 @@ class MusicBox:
         # Initialize Attributes
         self.root = root
         self.settings = {}
-        
+
         self.filename = ''
         self.track_name = ''
         self.track_pos = 0.0
@@ -43,7 +43,7 @@ class MusicBox:
         self.shuffle = BooleanVar()
         self.volume = DoubleVar()
         self.fade = IntVar()
-        
+
         self.cur_download = 0
         self.progress_bar_in_use = False
         self.cancel_flag = threading.Event()
@@ -242,7 +242,7 @@ class MusicBox:
         self.var_status = StringVar(value='Please enter a URL') # Shows the progress of current download
 
         # Widgets
-        self.lbl_url = Label(self.frm_download, text='URL:')
+        self.lbl_url = Label(self.frm_download, text='URL(s):')
         self.ent_url = Entry(self.frm_download)
         # self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws') # A DMCA-free default URL to download. Primarily for testing purposes
         self.ent_url.insert(0, 'https://youtube.com/playlist?list=PLcDwtIU91kNHJ_mMU4Vm6xUEU3YdXt5qi&si=ignjhoU2H52g7k7D')
@@ -435,11 +435,11 @@ class MusicBox:
         self.cnv_playlists.bind('<Leave>', self._unbind_mousewheel)
 
 
-# Download Frame Functions (NEED WORK DONE HERE)
+# Download Frame Functions
 
     def _extract_youtube_id(self, url):
         """
-        Extract YouTube video ID from various URL formats.
+        Helper function to extract YouTube video ID from different formats.
 
         Supports:
         - https://www.youtube.com/watch?v=VIDEO_ID
@@ -448,12 +448,6 @@ class MusicBox:
         - https://m.youtube.com/watch?v=VIDEO_ID
         - URLs with additional parameters
         - Embedded URLs
-
-        Args:
-            url (str): YouTube URL
-
-        Returns:
-            str: Video ID if found, None otherwise
         """
         if not url or not isinstance(url, str):
             return None
@@ -504,6 +498,12 @@ class MusicBox:
 
         filename = d.get('filename', '')
         if d['status'] == 'downloading':
+            # this MIGHT work for playlists
+            if filename == self.filename:
+                print(F'FILENAME: {filename}, CURRENT: {self.filename}')
+                if mixer.music.get_busy():
+                        mixer.music.stop()
+                        mixer.music.unload()
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             downloaded_bytes = d.get('downloaded_bytes', 0)
             if total_bytes:
