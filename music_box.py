@@ -14,6 +14,7 @@ from urllib.parse import urlparse, parse_qs
 from mutagen.mp3 import MP3
 from pygame import mixer
 from tracks import Playlist, Track
+from ui_updater import UIUpdatePostProcessor
 
 class MusicBox:
     def __init__(self, root):
@@ -27,6 +28,7 @@ class MusicBox:
         # Initialize Attributes
         self.root = root
         self.settings = {}
+        
         self.filename = ''
         self.track_name = ''
         self.track_pos = 0.0
@@ -41,6 +43,8 @@ class MusicBox:
         self.shuffle = BooleanVar()
         self.volume = DoubleVar()
         self.fade = IntVar()
+        
+        self.cur_download = 0
         self.progress_bar_in_use = False
         self.cancel_flag = threading.Event()
         self.ydl_opts = {
@@ -54,10 +58,8 @@ class MusicBox:
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-            }],
+                }],
             'progress_hooks': [self._yt_progress_hook],
-            'nooverwrites': True, # doesnt seem to affect anythings
-            'lazy_playlist': True, # doesnt seem to affect anything
         }
 
         # Setup Methods
@@ -169,7 +171,7 @@ class MusicBox:
         self.fade.set(int(self.settings['fade']))
         files = os.listdir(self.filepath)
         if self.filename and self.filename in files:
-            self.track_name = self._clean_filename(self.filename)
+            self.track_name = self.clean_filename(self.filename)
 
     def __save_settings(self):
         '''
@@ -203,7 +205,7 @@ class MusicBox:
         # Create Track objects, and add all tracks to "All" playlist
         files = os.listdir(self.filepath)
         for track in files:
-            self.playlist_all.add_track(self._clean_filename(track), track)
+            self.playlist_all.add_track(self.clean_filename(track), track)
             self.tracks[track] = Track()
 
         # Create Playlist objects and add their tracks, and add playlists to Track objects
@@ -212,7 +214,7 @@ class MusicBox:
             self.playlists[playlist] = Playlist(playlist)
             for track in tracks:
                 if track in files:
-                    self.playlists[playlist].add_track(self._clean_filename(track), track)
+                    self.playlists[playlist].add_track(self.clean_filename(track), track)
                     self.tracks[track].add_to_playlist(playlist)
 
         # Assign current playlist
@@ -242,7 +244,8 @@ class MusicBox:
         # Widgets
         self.lbl_url = Label(self.frm_download, text='URL:')
         self.ent_url = Entry(self.frm_download)
-        self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws') # A DMCA-free default URL to download. Primarily for testing purposes
+        # self.ent_url.insert(0, 'https://youtu.be/vz_AChHftws') # A DMCA-free default URL to download. Primarily for testing purposes
+        self.ent_url.insert(0, 'https://youtube.com/playlist?list=PLcDwtIU91kNHJ_mMU4Vm6xUEU3YdXt5qi&si=ignjhoU2H52g7k7D')
         self.btn_download = Button(self.frm_download, text='Download', command=self.download)
         self.bar_progress = Progressbar(master=self.frm_download, orient='horizontal')
         self.btn_cancel = Button(self.frm_download, text='Cancel', command=self.cancel_download)
@@ -493,23 +496,23 @@ class MusicBox:
 
     def _yt_progress_hook(self, d):
         '''
-        Update progress bar and status
+        Update progress bar and status as track is downloaded
         '''
         # Check if download should be cancelled
         if self.cancel_flag.is_set():
             raise Exception('Download cancelled by user')
-            
+
+        filename = d.get('filename', '')
         if d['status'] == 'downloading':
             total_bytes = d.get('total_bytes') or d.get('total_bytes_estimate')
             downloaded_bytes = d.get('downloaded_bytes', 0)
             if total_bytes:
                 percent = downloaded_bytes / total_bytes * 100
-                # Update progress bar in the main thread
                 self.root.after(0, lambda: self.bar_progress.config(value=percent))
-                self.root.after(0, lambda: self.var_status.set(f'Downloading... {percent:.1f}%'))
+                self.root.after(0, lambda: self.var_status.set(f'Downloading {self.clean_filename(os.path.basename(filename))} ({self.cur_download + 1}/?)... {percent:.1f}%'))
         elif d['status'] == 'finished':
             self.root.after(0, lambda: self.bar_progress.config(value=100))
-            self.root.after(0, lambda: self.var_status.set('Download finished, processing...'))
+            self.root.after(0, lambda: self.var_status.set(f'{self.clean_filename(os.path.basename(filename))} finished ({self.cur_download + 1}/?), processing...'))
 
     def download(self):
         '''
@@ -535,81 +538,41 @@ class MusicBox:
 
     def _download_thread(self, urls):
         '''
-        Download from URL with yt_dlp
-
-        NOTE: As of right now yt_dlp downloads all of the information from each URL
-        (particularly in a playlist) first, then does it again while downloading the
-        file itself in order to update the UI as each file is downloaded. This is
-        extermely inefficient and time-consuming, but I don't have a strong enough
-        understanding of yt_dlp to find a better workaround.
+        Download each url provided, single videos or playlists
         '''
         try:
             with YoutubeDL(self.ydl_opts) as ydl:
+                ydl.add_post_processor(UIUpdatePostProcessor(self))
                 for url in urls:
-                    # Check if cancelled before starting each download
                     if self.cancel_flag.is_set():
-                        self.root.after(0, lambda: self.var_status.set('Download cancelled'))
+                        self.root.after(0, lambda: self.var_status.set(f'Download cancelled. Downloaded {self.cur_download} out of {total_entries} tracks.'))
                         return
                     url = url.strip()
+                    # Stop current track if needed
                     if mixer.music.get_busy():
                         if self._extract_youtube_id(url) == self.filename[-16:-5]:
                             mixer.music.stop()
                             mixer.music.unload()
-                    # Extract info first to check if it's a playlist
-                    info = ydl.extract_info(url, download=False)
-                    
+
+                    # Download (playlist or single)
+                    info = ydl.extract_info(url, download=True)
+
                     if 'entries' in info:
-                        # It's a playlist
                         entries = info['entries']
                         total_entries = len(entries)
-                        
-                        for i, entry in enumerate(entries):
-                            if self.cancel_flag.is_set():
-                                self.root.after(0, lambda: self.var_status.set('Download cancelled'))
-                                return
-                            
-                            # Update status for playlist progress
-                            self.root.after(0, lambda i=i, total=total_entries: 
-                                          self.var_status.set(f'Downloading playlist item {i+1}/{total}...'))
-                            
-                            try:
-                                # Download individual entry
-                                single_info = ydl.extract_info(entry['webpage_url'], download=True)
-                                filename = ydl.prepare_filename(single_info)
-                                mp3_filename = os.path.splitext(filename)[0] + '.mp3'
-                                basename = os.path.basename(mp3_filename)
-                                
-                                # Add each track individually and update UI immediately
-                                self.playlist_all.add_track(self._clean_filename(basename), basename)
-                                self.tracks[basename] = Track()
-                                
-                                # Update UI immediately after each track is downloaded
-                                self.root.after(0, lambda: self.change_playlist(None))
-                                
-                            except Exception as e:
-                                print(f'Error downloading playlist item {i+1}: {e}')
-                                continue
-                            
-                        # Final status update after all playlist items are downloaded
-                        self.root.after(0, lambda: self.var_status.set(f'Playlist download complete! Downloaded {total_entries} tracks.'))
-                        
+                        self.root.after(0, lambda: self.var_status.set(f'Playlist download complete! Downloaded {self.cur_download} out of {total_entries} tracks.'))
                     else:
-                        # It's a single video
-                        single_info = ydl.extract_info(url, download=True)
-                        filename = ydl.prepare_filename(single_info)
-                        mp3_filename = os.path.splitext(filename)[0] + '.mp3'
-                        basename = os.path.basename(mp3_filename)
-                        
-                        self.playlist_all.add_track(self._clean_filename(basename), basename)
-                        self.tracks[basename] = Track()
-                        self.root.after(0, lambda: self.change_playlist(None))
+                        # filename = ydl.prepare_filename(info)
+                        # mp3_filename = os.path.splitext(filename)[0] + '.mp3'
+                        # basename = os.path.basename(mp3_filename)
                         self.root.after(0, lambda: self.var_status.set('Success!'))
-                        
+
         except Exception as e:
             if self.cancel_flag.is_set():
                 self.root.after(0, lambda: self.var_status.set('Download cancelled'))
             else:
-                self.root.after(0, lambda e=e: self.var_status.set(f'Error: {e}'))
+                self.root.after(0, lambda: self.var_status.set('Error'))
+                self.root.after(0, lambda e=e: messagebox.showerror('Error', f'Error: {e}'))
 
     def cancel_download(self):
         '''
@@ -618,8 +581,6 @@ class MusicBox:
         try:
             self.cancel_flag.set()
             self.var_status.set('Cancelling download...')
-            self.bar_progress.config(value=0)
-            
             # If download thread is running, wait for it to finish
             if hasattr(self, 'download_thread') and self.download_thread and self.download_thread.is_alive():
                 self.download_thread.join(timeout=2)  # Wait up to 2 seconds for thread to finish
@@ -633,6 +594,7 @@ class MusicBox:
                         print(f'Error removing {fname}: {e}')
 
             self.var_status.set('Download cancelled')
+            self.bar_progress.config(value=0)
         except Exception as e:
             self.var_status.set(f'Error cancelling download: {e}')
 
@@ -873,7 +835,7 @@ class MusicBox:
         mixer.music.fadeout(self.fade.get())
         self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
-        self.play_track(self._clean_filename(self.current_playlist.queue_pop(self.shuffle.get())))
+        self.play_track(self.clean_filename(self.current_playlist.queue_pop(self.shuffle.get())))
 
     def play_track(self, name):
         '''
@@ -1030,7 +992,7 @@ class MusicBox:
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
         self.remove_focus(None)
 
-    def _clean_filename(self, file):
+    def clean_filename(self, file):
         '''
         Helper function for taking raw filename with ID and extension, and trimming to only name (based on yt_dlp default filename)
         '''
