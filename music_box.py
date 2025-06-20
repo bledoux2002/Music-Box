@@ -677,6 +677,7 @@ class MusicBox:
                 hours, mins, secs = self._get_track_len(self.track_length)
                 self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
                 self.sld_progress.set(100)
+                self._transition()
                 return
             # Calculate current position
             if self.last_play_time:
