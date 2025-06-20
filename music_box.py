@@ -527,15 +527,7 @@ class MusicBox:
         self.var_status.set('Preparing...')
         self.bar_progress.config(value=0)
         entry = self.ent_url.get()
-        entries = entry.split(',')
-        urls = []
-        for url in entries:
-            urls.append(url.strip())
-        if mixer.music.get_busy():
-            for url in urls:
-                if self._extract_youtube_id(url) == self.filename[-16:-5]:
-                    mixer.music.stop()
-                    mixer.music.unload()
+        urls = entry.split(',')
 
         # Run download in a separate thread to avoid blocking the GUI
         self.download_thread = threading.Thread(target=self._download_thread, args=(urls,), daemon=True)
@@ -558,7 +550,11 @@ class MusicBox:
                     if self.cancel_flag.is_set():
                         self.root.after(0, lambda: self.var_status.set('Download cancelled'))
                         return
-                    
+                    url = url.strip()
+                    if mixer.music.get_busy():
+                        if self._extract_youtube_id(url) == self.filename[-16:-5]:
+                            mixer.music.stop()
+                            mixer.music.unload()
                     # Extract info first to check if it's a playlist
                     info = ydl.extract_info(url, download=False)
                     
