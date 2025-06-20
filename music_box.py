@@ -1,3 +1,4 @@
+import re
 import os
 import sys
 import json
@@ -9,6 +10,7 @@ from tkinter.ttk import *
 from tkinter import messagebox
 from tkinter import Scale as Scl
 from yt_dlp import YoutubeDL
+from urllib.parse import urlparse, parse_qs
 from mutagen.mp3 import MP3
 from pygame import mixer
 from tracks import Playlist, Track
@@ -54,8 +56,8 @@ class MusicBox:
                 'preferredcodec': 'mp3',
             }],
             'progress_hooks': [self._yt_progress_hook],
-            'nooverwrites': True,
-            'lazy_playlist': True,
+            'nooverwrites': True, # doesnt seem to affect anythings
+            'lazy_playlist': True, # doesnt seem to affect anything
         }
 
         # Setup Methods
@@ -432,6 +434,63 @@ class MusicBox:
 
 # Download Frame Functions (NEED WORK DONE HERE)
 
+    def _extract_youtube_id(self, url):
+        """
+        Extract YouTube video ID from various URL formats.
+
+        Supports:
+        - https://www.youtube.com/watch?v=VIDEO_ID
+        - https://youtu.be/VIDEO_ID
+        - https://youtube.com/watch?v=VIDEO_ID
+        - https://m.youtube.com/watch?v=VIDEO_ID
+        - URLs with additional parameters
+        - Embedded URLs
+
+        Args:
+            url (str): YouTube URL
+
+        Returns:
+            str: Video ID if found, None otherwise
+        """
+        if not url or not isinstance(url, str):
+            return None
+
+        # Remove whitespace
+        url = url.strip()
+
+        # Pattern for youtu.be short URLs
+        youtu_be_pattern = r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})'
+        match = re.search(youtu_be_pattern, url)
+        if match:
+            return match.group(1)
+
+        # Pattern for youtube.com URLs with v parameter
+        youtube_pattern = r'(?:youtube\.com.*[?&]v=)([a-zA-Z0-9_-]{11})'
+        match = re.search(youtube_pattern, url)
+        if match:
+            return match.group(1)
+
+        # Pattern for embedded URLs
+        embed_pattern = r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})'
+        match = re.search(embed_pattern, url)
+        if match:
+            return match.group(1)
+
+        # Fallback: try parsing as URL and extract v parameter
+        try:
+            parsed = urlparse(url)
+            if 'youtube.com' in parsed.netloc or 'youtu.be' in parsed.netloc:
+                query_params = parse_qs(parsed.query)
+                if 'v' in query_params:
+                    video_id = query_params['v'][0]
+                    # Validate video ID format (11 characters, alphanumeric + _ -)
+                    if re.match(r'^[a-zA-Z0-9_-]{11}$', video_id):
+                        return video_id
+        except:
+            pass
+        
+        return None
+
     def _yt_progress_hook(self, d):
         '''
         Update progress bar and status
@@ -454,42 +513,47 @@ class MusicBox:
 
     def download(self):
         '''
-        
+        Begin download of URLs.
+
+        NOTE Must be separated by a comma,
+        space is optional and will be removed if necessary.
+        In the case that the ID of any video being downloaded
+        matches the currently playing track, the current track
+        will be stopped and unloaded. The progress updater
+        will detect this and move to the next track in the queue.
         '''
-        # Clear any previous cancel flag
+
         self.cancel_flag.clear()
-        
         self.var_status.set('Preparing...')
-        if mixer.music.get_busy(): #replace to only happen if file about to be downloaded is already open
-            mixer.music.stop()
-        try:
-            mixer.music.unload()
-        except:
-            pass
         self.bar_progress.config(value=0)
-        url = self.ent_url.get()
-        URLs = [url]
+        entry = self.ent_url.get()
+        entries = entry.split(',')
+        urls = []
+        for url in entries:
+            urls.append(url.strip())
+        if mixer.music.get_busy():
+            for url in urls:
+                if self._extract_youtube_id(url) == self.filename[-16:-5]:
+                    mixer.music.stop()
+                    mixer.music.unload()
+
         # Run download in a separate thread to avoid blocking the GUI
-        self.download_thread = threading.Thread(target=self._download_thread, args=(URLs,), daemon=True)
+        self.download_thread = threading.Thread(target=self._download_thread, args=(urls,), daemon=True)
         self.download_thread.start()
 
-    def _download_thread(self, URLs):
+    def _download_thread(self, urls):
         '''
         Download from URL with yt_dlp
-        
+
         NOTE: As of right now yt_dlp downloads all of the information from each URL
         (particularly in a playlist) first, then does it again while downloading the
         file itself in order to update the UI as each file is downloaded. This is
         extermely inefficient and time-consuming, but I don't have a strong enough
         understanding of yt_dlp to find a better workaround.
-        
-        Currently the music player stops if it is downloading anything to avoid file
-        permission conflicts so it doesn't really matter if the UI updates or not, so I
-        plan on reverting this to only updating the UI after the entire playlist finishes. 
         '''
         try:
             with YoutubeDL(self.ydl_opts) as ydl:
-                for url in URLs:
+                for url in urls:
                     # Check if cancelled before starting each download
                     if self.cancel_flag.is_set():
                         self.root.after(0, lambda: self.var_status.set('Download cancelled'))
@@ -975,7 +1039,8 @@ class MusicBox:
         Helper function for taking raw filename with ID and extension, and trimming to only name (based on yt_dlp default filename)
         '''
         index = file.index('[')
-        return file[:index-1]
+        name = file[:index-1].replace('_', ' ')
+        return name
 
     def on_close(self):
         '''

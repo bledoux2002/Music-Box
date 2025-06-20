@@ -8,7 +8,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
 - **Track Playback:** Play, pause, skip forward/backward, and seek within tracks.
 - **Volume & Fade Controls:** Adjust volume and set fade-in/out durations.
 - **Shuffle:** Shuffle tracks within playlists.
-- **YouTube Download:** Download audio from YouTube URLs directly into your library.
+- **YouTube Download:** Download audio from YouTube videos and playlists to MP3 files.
 - **Persistent Settings:** Remembers your last played track, position, volume, and playlists.
 - **Keyboard Shortcuts:** Control playback and volume with keyboard keys.
 

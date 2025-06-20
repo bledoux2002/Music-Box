@@ -1,11 +1,10 @@
 {
-    "current playlist": "All",
-    "current track": "",
-    "track position": 0.0,
-    "queue position": 0,
-    "shuffle": false,
     "volume": 0.5,
     "fade": 1000,
+    "current track": "",
+    "current position": 0.0,
+    "shuffle": false,
+    "playlist": "All",
     "playlists": {
         "Playlist 0": [],
         "Playlist 1": [],
