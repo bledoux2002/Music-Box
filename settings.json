@@ -1,11 +1,11 @@
 {
     "current playlist": "All",
-    "current track": null,
-    "track position": 0.0,
+    "current track": "Fallout_4_Main_Theme_[_yGpoRbwe4s].mp3",
     "queue position": 0,
+    "track position": 1.002695083618164,
     "shuffle": false,
     "volume": 0.5,
-    "fade": 1000,
+    "fade": 500,
     "playlists": {
         "Playlist 0": [],
         "Playlist 1": [],

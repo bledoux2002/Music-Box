@@ -38,9 +38,6 @@ class MusicBox:
         self.playlist_all = Playlist('All')
         self.current_playlist = self.playlist_all
         self.var_playlist = StringVar()
-        self.prev_tracks = []
-        self.queue = [] # replace self.prev_tracks elsewhere in code
-        self.queue_pos = 0
         self.shuffle = BooleanVar()
         self.volume = DoubleVar()
         self.fade = IntVar()
@@ -146,8 +143,8 @@ class MusicBox:
             self.settings = {
                 'current playlist': 'All',
                 'current track': None,
-                'track position': 0.0,
                 'queue position': 0,
+                'track position': 0.0,
                 'shuffle': False,
                 'volume': 0.5,
                 'fade': 1000,
@@ -168,7 +165,6 @@ class MusicBox:
         self.var_playlist.set(self.settings['current playlist'])
         self.filename = self.settings['current track']
         self.track_pos = float(self.settings['track position'])
-        self.queue_pos = int(self.settings['queue position'])
         self.shuffle.set(self.settings['shuffle'])
         self.volume.set(float(self.settings['volume']))
         self.fade.set(int(self.settings['fade']))
@@ -189,8 +185,11 @@ class MusicBox:
 
         self.settings['current playlist'] = self.current_playlist.name
         self.settings['current track'] = self.filename
+        if self.shuffle.get():
+            self.settings['queue position'] = 0
+        else:
+            self.settings['queue position'] = self.current_playlist.get_queue_position()
         self.settings['track position'] = self.track_pos
-        self.settings['queue position'] = self.queue_pos
         self.settings['shuffle'] = self.shuffle.get()
         self.settings['volume'] = round(self.volume.get(), 2)
         self.settings['fade'] = self.fade.get()
@@ -213,19 +212,18 @@ class MusicBox:
 
         # Create Playlist objects and add their tracks, and add playlists to Track objects
         saved_lists = self.settings['playlists']
+        cur_playlist = self.settings['current playlist']
         for playlist, tracks in saved_lists.items():
             self.playlists[playlist] = Playlist(playlist)
             for track in tracks:
                 if track in files:
                     self.playlists[playlist].add_track(self.clean_filename(track), track)
                     self.tracks[track].add_to_playlist(playlist)
-
-        # Assign current playlist
-        cur_playlist = self.settings['current playlist']
-        if cur_playlist != 'All':
-            self.current_playlist = self.playlists[cur_playlist]
-        if self.shuffle.get():
-            self.shuffle_songs()
+            if playlist == cur_playlist:
+                if self.settings['shuffle']:
+                    self.playlists[playlist].shuffle_queue()
+                else:
+                    self.playlists[playlist].queue_pos = self.settings['queue position']
 
     def __setup_download_frame(self):
         '''
@@ -276,7 +274,8 @@ class MusicBox:
         self.cb_playlists = Combobox(self.frm_current_playlist, textvariable=self.var_playlist)
         self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_current_playlist)
-        for track in self.current_playlist.get_track_names():
+        track_names = self.current_playlist.queue
+        for track in track_names:
             self.lb_tracks.insert(END, track)
 
         # Grid
@@ -286,7 +285,7 @@ class MusicBox:
         # Bindings
         self.cb_playlists.bind('<<ComboboxSelected>>', self.change_playlist)
         self.cb_playlists.bind('<Return>', self.rename_playlist)
-        self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection())))
+        self.lb_tracks.bind('<Double-1>', lambda e: self.play_track(self.lb_tracks.get(self.lb_tracks.curselection()), True))
         self.lb_tracks.bind('<Delete>', lambda e: self.del_track(self.lb_tracks.get(self.lb_tracks.curselection())))
 
         self.change_playlist(None)
@@ -353,7 +352,7 @@ class MusicBox:
         self.btn_end = Button(self.frm_controls, text='>>|')
         self.sld_fade = Scl(self.frm_controls, orient=HORIZONTAL, from_=0, to=5000, resolution=100, variable=self.fade) #ttk Scale doesn't have resolution option, so fade will use classic Scale
         self.lbl_fade = Label(self.frm_controls, textvariable=self.var_fade)
-        self.cbtn_shuffle = Checkbutton(self.frm_controls, text='Shuffle', variable=self.shuffle, command=self.shuffle_songs)
+        self.cbtn_shuffle = Checkbutton(self.frm_controls, text='Shuffle', variable=self.shuffle, command=self.shuffle_toggle)
 
         # Grid
         self.btn_start.grid(row=0, column=0, padx=5, pady=10, sticky='e')
@@ -502,7 +501,6 @@ class MusicBox:
         if d['status'] == 'downloading':
             # this MIGHT work for playlists
             if filename == self.filename:
-                print(F'FILENAME: {filename}, CURRENT: {self.filename}')
                 if mixer.music.get_busy():
                         mixer.music.stop()
                         mixer.music.unload()
@@ -603,15 +601,14 @@ class MusicBox:
 
 # Playback
 
-    def play_track(self, name):
+    def play_track(self, name, set_queue_pos=False):
         '''
         Finds the corresponding file and plays the track, while updating the UI
         '''
         self.track_name = name
-        try:
-            self.filename = self.current_playlist.get_track(name)
-        except:
-            self.filename = self.playlist_all.get_track(name)
+        self.filename = self.current_playlist.get_track(name)
+        if set_queue_pos:
+            self.current_playlist.queue_pos = self.current_playlist.queue.index(self.track_name)
         self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
         self.track_length = int(self.audio_info.length)
         self.track_pos = 0  # Track position in ms
@@ -653,11 +650,11 @@ class MusicBox:
         Go back to previous track
         '''
         focus = self.root.focus_get()
-        if focus != self.cb_playlists and focus != self.ent_url and self.prev_tracks:
-            track = self.prev_tracks[0]
-            self.prev_tracks = self.prev_tracks[1:]
-            self.current_playlist.queue.insert(0, self.track_name)
-            self.play_track(track)
+        if focus != self.cb_playlists and focus != self.ent_url and self.track_name != '':
+            self.sld_progress.set(0)
+            self.var_progress.set(f'0:00:00')
+
+            self._transition(-1)
 
     def play(self, event):
         '''
@@ -688,16 +685,7 @@ class MusicBox:
             hours, mins, secs = self._get_track_len(self.track_length)
             self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
 
-            self._transition()
-
-    def shuffle_songs(self):
-        '''
-        Shuffle current queue
-        '''
-        if self.shuffle.get():
-            self.current_playlist.shuffle_queue()
-        else:
-            self.current_playlist.new_queue()
+            self._transition(1)
 
     def forward(self, event):
         '''
@@ -794,6 +782,16 @@ class MusicBox:
         self.volume.set(round(self.volume.get(), 2))
         self.var_volume.set(int(val * 100))
 
+    def shuffle_toggle(self):
+        '''
+        (Un)shuffle the current queue, updating the ordering in the listbox and preserving the current track
+        '''
+        if self.shuffle.get():
+            self.current_playlist.shuffle_queue()
+        else:
+            self.current_playlist.unshuffle_queue()
+        self.change_playlist(None)
+
     def _start_progress_updater(self):
         '''
         Continuously updates progress slider to reflect current position of current track
@@ -806,7 +804,7 @@ class MusicBox:
                 hours, mins, secs = self._get_track_len(self.track_length)
                 self.var_progress.set(f'{hours}:{mins:02}:{secs:02}')
                 self.sld_progress.set(100)
-                self._transition()
+                self._transition(1)
                 return
             # Calculate current position
             if self.last_play_time:
@@ -833,14 +831,14 @@ class MusicBox:
 
         return hours, mins, secs    
 
-    def _transition(self):
+    def _transition(self, dir):
         '''
         Helper function for fading track out and fading next track in
         '''
         mixer.music.fadeout(self.fade.get())
-        self.prev_tracks.insert(0, self.track_name)
         mixer.music.unload()
-        self.play_track(self.clean_filename(self.current_playlist.queue_pop(self.shuffle.get())))
+        track = self.current_playlist.increment_queue(dir)
+        self.play_track(track)
 
 
 # Playlists
@@ -877,10 +875,12 @@ class MusicBox:
             self.track_name = ''
             self.filename = ''
         self.playlist_all.remove_track(name)
-        for p_name, playlist in self.playlists.items():
+        playlists = self.tracks[filename].get_playlists()
+        for p_name in playlists:
+            playlist = self.playlists[playlist]
             if filename in playlist.get_tracks():
                 playlist.remove_track(name)
-                self.tracks[filename].remove_from_playlist(p_name)
+        del self.tracks[filename]
         self.change_playlist(None)
         os.remove(f'{self.filepath}/{filename}')
         self.top.destroy()
@@ -908,7 +908,8 @@ class MusicBox:
         else:
             self.current_playlist = self.playlists[playlist]
         self.lb_tracks.delete(0, END)
-        for track in self.current_playlist.get_track_names():
+        track_names = self.current_playlist.queue
+        for track in track_names:
             self.lb_tracks.insert(END, track)
 
     def edit_playlists(self):
@@ -943,13 +944,13 @@ class MusicBox:
         oldname = self.current_playlist.name
         newname = self.cb_playlists.get()
         if oldname == 'All':
-            messagebox.showerror('Can\'t change name', '"All" playlist name cannot be changed.')
+            messagebox.showerror('Error', '"All" playlist name cannot be changed.')
             self.cb_playlists.set('All')
             return
-        if newname in self.playlists.keys():
+        if newname in self.playlists.keys() or newname == 'All':
             if newname == oldname:
                 return
-            messagebox.showerror('Can\'t change name', 'Playlist name already in use.')
+            messagebox.showerror('Error', 'Playlist name already in use.')
             self.cb_playlists.set(oldname)
             return
         self.playlists[oldname].set_name(newname)
@@ -999,6 +1000,12 @@ class MusicBox:
         Closing function to save settings
         '''
         self.__save_settings()
+        for fname in os.listdir(self.filepath):
+            if fname.endswith('.part'):
+                try:
+                    os.remove(os.path.join(self.filepath, fname))
+                except Exception as e:
+                    print(f'Error removing {fname}: {e}')
         # Now destroy the window
         self.root.destroy()
 
