@@ -207,7 +207,7 @@ class MusicBox:
         else:
             self.track_pos = 0.0
 
-        self.settings['current playlist'] = self.current_playlist.name
+        self.settings['current playlist'] = self.current_playlist.get_name()
         self.settings['current track'] = self.filename
         if self.shuffle.get():
             self.settings['queue position'] = 0
@@ -229,7 +229,7 @@ class MusicBox:
         Create "All" playlist and load saved playlists from settings
         '''
         # Create Track objects, and add all tracks to "All" playlist
-        files = os.listdir(self.filepath)
+        files = sorted(os.listdir(self.filepath))
         for track in files:
             self.playlist_all.add_track(self.clean_filename(track), track)
             self.tracks[track] = Track()
@@ -247,7 +247,7 @@ class MusicBox:
                 if self.settings['shuffle']:
                     self.playlists[playlist].shuffle_queue()
                 else:
-                    self.playlists[playlist].queue_pos = self.settings['queue position']
+                    self.playlists[playlist].set_queue_pos(self.settings['queue position'])
 
     def __setup_download_frame(self):
         '''
@@ -296,9 +296,9 @@ class MusicBox:
 
         # Widgets
         self.cb_playlists = Combobox(self.frm_current_playlist, textvariable=self.var_playlist)
-        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple(name for name, _ in self.playlists.items())
+        self.cb_playlists['values'] = tuple([self.playlist_all.get_name()]) + tuple(name for name, _ in self.playlists.items())
         self.lb_tracks = Listbox(self.frm_current_playlist)
-        track_names = self.current_playlist.queue
+        track_names = self.current_playlist.get_queue()
         for track in track_names:
             self.lb_tracks.insert(END, track)
 
@@ -632,7 +632,8 @@ class MusicBox:
         self.track_name = name
         self.filename = self.current_playlist.get_track(name)
         if set_queue_pos:
-            self.current_playlist.queue_pos = self.current_playlist.queue.index(self.track_name)
+            self.current_playlist.set_queue_pos(self.current_playlist.get_queue().index(self.track_name))
+        self.lb_tracks.selection_set(self.current_playlist.get_queue_pos())
         self.audio_info = MP3(os.path.join(self.filepath, self.filename)).info
         self.track_length = int(self.audio_info.length)
         self.track_pos = 0  # Track position in ms
@@ -864,6 +865,7 @@ class MusicBox:
         '''
         mixer.music.fadeout(self.fade.get())
         mixer.music.unload()
+        self.lb_tracks.selection_clear(0, END)
         track = self.current_playlist.increment_queue(dir)
         self.play_track(track)
 
@@ -935,7 +937,7 @@ class MusicBox:
         else:
             self.current_playlist = self.playlists[playlist]
         self.lb_tracks.delete(0, END)
-        track_names = self.current_playlist.queue
+        track_names = sorted(self.current_playlist.get_queue())
         for track in track_names:
             self.lb_tracks.insert(END, track)
 
@@ -949,14 +951,14 @@ class MusicBox:
                 playlists = list(self.playlists.keys())
                 if val >= 0:
                     self.playlists[playlists[val]].add_track(self.track_name, self.filename)
-                    self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].name)
-                    if playlists[val] == self.current_playlist.name:
+                    self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].get_name())
+                    if playlists[val] == self.current_playlist.get_name():
                         self.lb_tracks.insert(END, self.track_name)
                 else:
                     try:
                         self.playlists[playlists[-val-1]].remove_track(self.track_name)
-                        self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].name)
-                        if playlists[-val-1] == self.current_playlist.name:
+                        self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].get_name())
+                        if playlists[-val-1] == self.current_playlist.get_name():
                             tracks = self.lb_tracks.get(0, END)
                             for i, track in enumerate(tracks):
                                 if track == self.track_name:
@@ -968,7 +970,7 @@ class MusicBox:
         '''
         Change playlist name based on Combobox
         '''
-        oldname = self.current_playlist.name
+        oldname = self.current_playlist.get_name()
         newname = self.cb_playlists.get()
         if oldname == 'All':
             messagebox.showerror('Error', '"All" playlist name cannot be changed.')
@@ -992,7 +994,7 @@ class MusicBox:
         for var in self.playlist_var_names:
             if var.get() == oldname:
                 var.set(newname)
-        self.cb_playlists['values'] = tuple([self.playlist_all.name]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
+        self.cb_playlists['values'] = tuple([self.playlist_all.get_name()]) + tuple({name if name != oldname else newname: name for name in self.playlists.keys()})
         self.remove_focus(None)
 
 

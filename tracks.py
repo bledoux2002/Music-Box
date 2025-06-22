@@ -14,6 +14,9 @@ class Playlist:
     def set_name(self, name):
         self.name = name
 
+    def get_name(self):
+        return self.name
+
     def add_track(self, name, file):
         self.tracks[name] = file
         self.queue.append(name)
@@ -39,6 +42,12 @@ class Playlist:
 
     def get_queue(self):
         return self.queue
+    
+    def get_queue_pos(self):
+        return self.queue_pos
+    
+    def set_queue_pos(self, num):
+        self.queue_pos = num
         
     def increment_queue(self, num):
         # Next song played in queue (or previous if given -1). Will loop the playlist, preserving order even if shuffled
