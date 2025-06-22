@@ -937,7 +937,7 @@ class MusicBox:
         else:
             self.current_playlist = self.playlists[playlist]
         self.lb_tracks.delete(0, END)
-        track_names = sorted(self.current_playlist.get_queue())
+        track_names = self.current_playlist.get_queue()
         for track in track_names:
             self.lb_tracks.insert(END, track)
 
