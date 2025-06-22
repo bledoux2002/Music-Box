@@ -76,11 +76,22 @@ Run executable within a folder (files and settings will be stored here)
 - Many settings are saved to a json file to be loaded up on next boot. The current playlist, track, position in track, volume, and fade, as well as whether the playlist is shuffled.
 - The same json file is also used to store which songs are in which playlists, as well as the names of those playlists.
 
+
+### Current Issues
+#### Troubleshooting: "unable to obtain file audio codec with ffprobe"
+
+If you see this error after downloading, try the following:
+- Make sure [ffmpeg](https://ffmpeg.org/download.html) is installed and its folder is added to your system PATH.
+- Open a new Command Prompt and run `ffprobe -version` to verify installation.
+- Delete any incomplete or corrupted files and try downloading again.
+- Update yt-dlp with `python -m pip install -U yt-dlp`.
+- If the problem persists, try a different video URL.
+
 ## Future Plans
 - Changing track names in the Listbox similarly to chaning playlist names
 - Filtering track listbox using Entry to matching names
 - Changing listbox to multiple selections so multiple tracks can be added to a playlist at once
-- Support for non-Windows machines, as I am unsure if file structure operations will function correctly on non-Windows systems.
+- Support for non-Windows machines, particularly directory and file pathing.
 
 ## Resources
 - [yt_dlp](https://github.com/yt-dlp/yt-dlp)

@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import time
+import platform
 import threading
 import traceback
 from tkinter import *
@@ -15,6 +16,7 @@ from mutagen.mp3 import MP3
 from pygame import mixer
 from tracks import Playlist, Track
 from ui_updater import UIUpdatePostProcessor
+import shutil
 
 class MusicBox:
 
@@ -25,6 +27,12 @@ class MusicBox:
         self.filepath = None
         self.settings_path = None
         self.__setup_directory()
+
+        # self.base_path = self.__get_user_data_dir()
+        # self.filepath = os.path.join(self.base_path, 'files')
+        # self.settings_path = os.path.join(self.base_path, 'settings.json')
+        # if not os.path.exists(self.filepath):
+        #     os.makedirs(self.filepath, exist_ok=True)
 
         # Initialize Attributes
         self.root = root
@@ -51,9 +59,8 @@ class MusicBox:
             'format': 'bestaudio/best',
             'outtmpl': '%(title).82s_[%(id)s].%(ext)s'.replace(' ', '_'),
             'restrictfilenames': True,
-            'windowsFilenames': True,
             'paths': {
-                'home': 'files',
+                'home': self.filepath,
             },
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -61,7 +68,6 @@ class MusicBox:
                 }],
             'progress_hooks': [self._yt_progress_hook],
         }
-
         # Setup Methods
         self.__setup_UI()
         self.__load_settings()
@@ -96,6 +102,24 @@ class MusicBox:
         self.settings_path = os.path.join(self.base_path, 'settings.json')
         if not os.path.exists(self.filepath):
             os.makedirs(self.filepath)
+
+    def __get_user_data_dir(self, app_name='MusicBox'):
+        '''
+        Supposed to use user directory for different operating systems.
+        Currently causes issues with ffmpeg and ffprobe audio codec
+        '''
+        home = os.path.expanduser('~')
+        system = platform.system()
+        if system == 'Windows':
+            appdata = os.getenv('APPDATA')
+            if appdata:
+                return os.path.join(appdata, app_name)
+            else:
+                return os.path.join(home, 'AppData', 'Roaming', app_name)
+        elif system == 'Darwin':  # macOS
+            return os.path.join(home, 'Library', 'Application Support', app_name)
+        else:  # Linux and others
+            return os.path.join(home, '.config', app_name)
 
     def __setup_UI(self):
         '''
@@ -609,7 +633,7 @@ class MusicBox:
         self.filename = self.current_playlist.get_track(name)
         if set_queue_pos:
             self.current_playlist.queue_pos = self.current_playlist.queue.index(self.track_name)
-        self.audio_info = MP3(f'{self.filepath}/{self.filename}').info
+        self.audio_info = MP3(os.path.join(self.filepath, self.filename)).info
         self.track_length = int(self.audio_info.length)
         self.track_pos = 0  # Track position in ms
         self.is_playing = False
@@ -625,7 +649,7 @@ class MusicBox:
         mixer.music.stop()
         mixer.music.unload()
         self.var_title.set(self.track_name)
-        mixer.music.load(f'{self.filepath}/{self.filename}')
+        mixer.music.load(os.path.join(self.filepath, self.filename))
         hours, mins, secs = self._get_track_len(self.track_length)
         self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
         mixer.music.play(fade_ms=self.fade.get())
