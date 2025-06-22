@@ -646,16 +646,19 @@ class MusicBox:
             else:
                 self.var_playlists[i].set(-i-1)
 
-        mixer.music.stop()
-        mixer.music.unload()
-        self.var_title.set(self.track_name)
-        mixer.music.load(os.path.join(self.filepath, self.filename))
-        hours, mins, secs = self._get_track_len(self.track_length)
-        self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
-        mixer.music.play(fade_ms=self.fade.get())
-        mixer.music.pause()
-        self.start(None)
-        self.play(None)
+        try:
+            mixer.music.stop()
+            mixer.music.unload()
+            self.var_title.set(self.track_name)
+            mixer.music.load(os.path.join(self.filepath, self.filename))
+            hours, mins, secs = self._get_track_len(self.track_length)
+            self.var_length.set(f'{hours}:{mins:02}:{secs:02}')
+            mixer.music.play(fade_ms=self.fade.get())
+            mixer.music.pause()
+            self.start(None)
+            self.play(None)
+        except Exception as e:
+            messagebox.showerror('Error', e)
 
     def start(self, event):
         '''
