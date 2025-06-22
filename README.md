@@ -88,7 +88,6 @@ If you see this error after downloading, try the following:
 - If the problem persists, try a different video URL.
 
 ## Future Plans
-- Changing track names in the Listbox similarly to chaning playlist names
 - Filtering track listbox using Entry to matching names
 - Changing listbox to multiple selections so multiple tracks can be added to a playlist at once
 - Support for non-Windows machines, particularly directory and file pathing.
