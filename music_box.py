@@ -451,7 +451,7 @@ class MusicBox:
                 self.var_playlists.append(Variable(value=i))
             else:
                 self.var_playlists.append(Variable(value=-i-1))
-            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=self.edit_playlists))
+            self.cbtn_playlists.append(Checkbutton(self.frm_playlists_inner, textvariable=self.playlist_var_names[i], variable=self.var_playlists[i], offvalue=-i-1, onvalue=i, command=lambda idx=i: self.edit_playlists(idx)))
             self.cbtn_playlists[i].grid(row=i, column=0, padx=10, sticky='nw')
 
         # Bindings
@@ -941,30 +941,29 @@ class MusicBox:
         for track in track_names:
             self.lb_tracks.insert(END, track)
 
-    def edit_playlists(self):
+    def edit_playlists(self, index):
         '''
         Updates which playlists a track is in based on the checkboxes. A bit redundant going over all of them
         '''
         if self.track_name != '':
-            for i, var in enumerate(self.var_playlists):
-                val = var.get()
-                playlists = list(self.playlists.keys())
-                if val >= 0:
-                    self.playlists[playlists[val]].add_track(self.track_name, self.filename)
-                    self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].get_name())
-                    if playlists[val] == self.current_playlist.get_name():
-                        self.lb_tracks.insert(END, self.track_name)
-                else:
-                    try:
-                        self.playlists[playlists[-val-1]].remove_track(self.track_name)
-                        self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].get_name())
-                        if playlists[-val-1] == self.current_playlist.get_name():
-                            tracks = self.lb_tracks.get(0, END)
-                            for i, track in enumerate(tracks):
-                                if track == self.track_name:
-                                    self.lb_tracks.delete(i)
-                    except:
-                        pass
+            val = self.var_playlists[index].get()
+            playlists = list(self.playlists.keys())
+            if val >= 0:
+                self.playlists[playlists[val]].add_track(self.track_name, self.filename)
+                self.tracks[self.filename].add_to_playlist(self.playlists[playlists[val]].get_name())
+                if playlists[val] == self.current_playlist.get_name():
+                    self.lb_tracks.insert(END, self.track_name)
+            else:
+                try:
+                    self.playlists[playlists[-val-1]].remove_track(self.track_name)
+                    self.tracks[self.filename].remove_from_playlist(self.playlists[playlists[-val-1]].get_name())
+                    if playlists[-val-1] == self.current_playlist.get_name():
+                        tracks = self.lb_tracks.get(0, END)
+                        for i, track in enumerate(tracks):
+                            if track == self.track_name:
+                                self.lb_tracks.delete(i)
+                except:
+                    pass
 
     def rename_playlist(self, event):
         '''

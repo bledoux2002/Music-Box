@@ -1,14 +1,18 @@
 {
-    "current playlist": "All",
-    "current track": "The_Commonwealth_[FLtN8PekdXI].mp3",
-    "queue position": 5,
-    "track position": 2.8107900619506836,
+    "current playlist": "Playlist 1",
+    "current track": "Of_Green_and_Grey_[_gzlmAW7bMw].mp3",
+    "queue position": 0,
+    "track position": 0.0,
     "shuffle": false,
     "volume": 0.5,
     "fade": 500,
     "playlists": {
-        "Playlist 0": [],
-        "Playlist 1": [],
+        "Playlist 0": [
+            "Standoff_[mjm_N6jkdRQ].mp3"
+        ],
+        "Playlist 1": [
+            "Of_Green_and_Grey_[_gzlmAW7bMw].mp3"
+        ],
         "Playlist 2": [],
         "Playlist 3": [],
         "Playlist 4": [],

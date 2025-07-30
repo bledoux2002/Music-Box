@@ -43,7 +43,7 @@ Note: I believe the provided executable only works on Windows machines. For othe
 
 #### Python Program
 ```sh
-python [music_player.py](http://_vscodecontentref_/0)
+python music_box.py
 ```
 Alternatively, you can compile into an executable yourself. I am not sure but I believe this will create an executable compatible with the system it is run on:
 ```sh
