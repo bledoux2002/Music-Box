@@ -91,6 +91,7 @@ If you see this error after downloading, try the following:
 - Filtering track listbox using Entry to matching names
 - Changing listbox to multiple selections so multiple tracks can be added to a playlist at once
 - Support for non-Windows machines, particularly directory and file pathing.
+- Soundboard (grid of buttons for different downloaded audio files, sort of like a digital stream deck)
 
 ## Resources
 - [yt_dlp](https://github.com/yt-dlp/yt-dlp)
