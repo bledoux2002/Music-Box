@@ -5,3 +5,4 @@ test.py
 /dist/files
 setup.txt
 error_log.txt
+/__pycache__

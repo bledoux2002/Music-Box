@@ -24,6 +24,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
   - `mutagen`
   - `yt-dlp`
   - `tkinter` (usually included with Python)
+  - `pyinstaller` (for compiling to executable)
 
 ### __Installation__
 
