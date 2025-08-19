@@ -130,6 +130,7 @@ class MusicBox:
         self.root.minsize(750, 450)
         self.root.title('Music Box')
         self.root.protocol('WM_DELETE_WINDOW', self.on_close)
+        self.root.option_add('*tearOff', FALSE)
 
         # Style
         self.style_default = Style()
@@ -155,6 +156,13 @@ class MusicBox:
         self.root.bind('.', lambda e: self.change_playlist_kb(-1))
         for i in range(10):
             self.root.bind(f'{i}', lambda e: self.change_playlist_kb(i))
+
+        # Menubar
+        self.menubar = Menu(self.root)
+        self.menu_file = Menu(self.menubar)
+        self.menu_edit = Menu(self.menubar)
+        self.menubar.add_cascade(menu=self.menu_file, label='File')
+        self.menubar.add_cascade(menu=self.menu_edit, label='Edit')
 
     def __load_settings(self):
         '''
@@ -876,18 +884,18 @@ class MusicBox:
         '''
         Prompts user to confirm deletion of track
         '''
-        self.top = Toplevel(self.root)
-        self.top.title('Confirmation')
-        self.top.geometry(f'300x100+{self.root.winfo_x() + 250}+{self.root.winfo_y() + 150}')
-        self.top.grab_set()
+        self.top_delete = Toplevel(self.root)
+        self.top_delete.title('Confirmation')
+        self.top_delete.geometry(f'300x100+{self.root.winfo_x() + 250}+{self.root.winfo_y() + 150}')
+        self.top_delete.grab_set()
         warning = 'Delete file?'
-        Label(self.top, text=warning).pack(padx=20, pady=10)
+        Label(self.top_delete, text=warning).pack(padx=20, pady=10)
         
-        frm_controls = Frame(self.top)
+        frm_controls = Frame(self.top_delete)
         frm_controls.pack(pady=10)
 
         Button(frm_controls, text='DELETE', width=10, command=lambda: self.on_delete(name)).pack(side=LEFT, padx=5)
-        Button(frm_controls, text='CANCEL', width=10, command=self.top.destroy).pack(side=LEFT, padx=5)
+        Button(frm_controls, text='CANCEL', width=10, command=self.top_delete.destroy).pack(side=LEFT, padx=5)
 
     def on_delete(self, name):
         '''
@@ -912,7 +920,7 @@ class MusicBox:
         del self.tracks[filename]
         self.change_playlist(None)
         os.remove(f'{self.filepath}/{filename}')
-        self.top.destroy()
+        self.top_delete.destroy()
 
     def change_playlist_kb(self, num):
         '''
