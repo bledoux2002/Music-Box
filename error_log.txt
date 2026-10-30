@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "C:\Users\itsto\source\Music-Box\music_box.py", line 10, in run
+    MusicBox(root)
+  File "C:\Users\itsto\source\Music-Box\main.py", line 85, in __init__
+    self.__setup_player_frame()
+  File "C:\Users\itsto\source\Music-Box\main.py", line 351, in __setup_player_frame
+    self.__setup_playlists_frame()
+  File "C:\Users\itsto\source\Music-Box\main.py", line 443, in __setup_playlists_frame
+    playlists = self.tracks[self.filename].get_playlists()
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^
+KeyError: 'Of_Green_and_Grey_[_gzlmAW7bMw].mp3'

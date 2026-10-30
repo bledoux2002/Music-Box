@@ -51,6 +51,11 @@ Alternatively, you can compile into an executable yourself. I am not sure but I 
 PyInstaller --onefile --windowed music_box.py --name "Music Box" --icon icon.ico
 ```
 
+The launcher is kept in `music_box.py`. The `MusicBox` application class lives in
+`main.py`, while reusable path, filename, URL, and formatting helpers are in
+`utils/`. New pages, such as the planned soundboard, can be added without
+expanding the launcher.
+
 #### Executable
 Run executable within a folder (files and settings will be stored here)
 
