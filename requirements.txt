@@ -2,3 +2,5 @@ mutagen
 pygame
 yt_dlp
 pyinstaller
+pytest
+pytest-cov

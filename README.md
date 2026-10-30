@@ -56,6 +56,8 @@ The launcher is kept in `music_box.py`. The `MusicBox` application class lives i
 `utils/`. New pages, such as the planned soundboard, can be added without
 expanding the launcher.
 
+Application and error logs are written to `logs/music_box.log`.
+
 #### Executable
 Run executable within a folder (files and settings will be stored here)
 

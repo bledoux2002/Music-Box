@@ -1,5 +1,5 @@
 import os
-from tracks import Track
+from utils.tracks import Track
 from yt_dlp.postprocessor import PostProcessor
 
 class UIUpdatePostProcessor(PostProcessor):

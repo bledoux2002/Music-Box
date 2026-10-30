@@ -5,7 +5,6 @@ import json
 import time
 import platform
 import threading
-import traceback
 from tkinter import *
 from tkinter.ttk import *
 from tkinter import messagebox
@@ -14,8 +13,9 @@ from yt_dlp import YoutubeDL
 from urllib.parse import urlparse, parse_qs
 from mutagen.mp3 import MP3
 from pygame import mixer
-from tracks import Playlist, Track
-from ui_updater import UIUpdatePostProcessor
+from utils.logging_setup import configure_logging
+from utils.tracks import Playlist, Track
+from utils.ui_updater import UIUpdatePostProcessor
 from utils import (
     clean_filename,
     extract_youtube_id,
@@ -25,6 +25,10 @@ from utils import (
     setup_app_directories,
 )
 import shutil
+
+
+logger = configure_logging()
+
 
 class MusicBox:
 
@@ -555,6 +559,7 @@ class MusicBox:
                         self.root.after(0, lambda: self.var_status.set('Success!'))
 
         except Exception as e:
+            logger.exception('Download failed')
             if self.cancel_flag.is_set():
                 self.root.after(0, lambda: self.var_status.set('Download cancelled'))
             else:
@@ -578,11 +583,12 @@ class MusicBox:
                     try:
                         os.remove(os.path.join(self.filepath, fname))
                     except Exception as e:
-                        print(f'Error removing {fname}: {e}')
+                        logger.exception('Error removing partial download %s', fname)
 
             self.var_status.set('Download cancelled')
             self.bar_progress.config(value=0)
         except Exception as e:
+            logger.exception('Cancelling download failed')
             self.var_status.set(f'Error cancelling download: {e}')
 
 
@@ -622,6 +628,7 @@ class MusicBox:
             self.start(None)
             self.play(None)
         except Exception as e:
+            logger.exception('Playing track %s failed', self.track_name)
             messagebox.showerror('Error', e)
 
     def start(self, event):
@@ -925,8 +932,8 @@ class MusicBox:
                         for i, track in enumerate(tracks):
                             if track == self.track_name:
                                 self.lb_tracks.delete(i)
-                except:
-                    pass
+                except Exception:
+                    logger.exception('Removing %s from a playlist failed', self.track_name)
 
     def rename_playlist(self, event):
         '''
@@ -996,7 +1003,7 @@ class MusicBox:
                 try:
                     os.remove(os.path.join(self.filepath, fname))
                 except Exception as e:
-                    print(f'Error removing {fname}: {e}')
+                    logger.exception('Error removing partial download %s during close', fname)
         # Now destroy the window
         self.root.destroy()
 
@@ -1029,16 +1036,19 @@ class MusicBox:
 
 if __name__ == '__main__':
     try:
+        logger.info('Starting Music Box directly from main.py')
         root = Tk()
         MusicBox(root)
         root.mainloop()
-    except Exception as e:
+    except Exception:
+        logger.exception('Unhandled application error')
         try:
-            with open('error_log.txt', 'w', encoding='utf-8') as f:
-                f.write(traceback.format_exc())
             root = Tk()
             root.withdraw()
-            messagebox.showerror('Error', 'An unexpected error occurred. See error_log.txt for details.')
+            messagebox.showerror(
+                'Error',
+                'An unexpected error occurred. See logs/music_box.log for details.',
+            )
             root.destroy()
-        except:
-            pass
+        except Exception:
+            logger.exception('Unable to display the application error dialog')
