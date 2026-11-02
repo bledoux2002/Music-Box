@@ -11,6 +11,7 @@ Adaptive Music Box is a desktop music player application built with Python and T
 - **YouTube Download:** Download audio from YouTube videos and playlists to MP3 files.
 - **Persistent Settings:** Remembers your last played track, position, volume, and playlists.
 - **Keyboard Shortcuts:** Control playback and volume with keyboard keys.
+- **Soundboard:** Switch to the Soundboard tab to play downloaded audio files from a grid of buttons.
 
 ## Getting Started
 
@@ -51,10 +52,10 @@ Alternatively, you can compile into an executable yourself. I am not sure but I 
 PyInstaller --onefile --windowed music_box.py --name "Music Box" --icon icon.ico
 ```
 
-The launcher is kept in `music_box.py`. The `MusicBox` application class lives in
-`main.py`, while reusable path, filename, URL, and formatting helpers are in
-`utils/`. New pages, such as the planned soundboard, can be added without
-expanding the launcher.
+The application controller is kept in `MusicBox.py`. The Music Box and
+Soundboard notebook tabs are built by `music_box_page.py` and
+`soundboard_page.py`, respectively. Reusable path, filename, URL, and
+formatting helpers are in `utils/`.
 
 Application and error logs are written to `logs/music_box.log`.
 
@@ -84,6 +85,11 @@ Run executable within a folder (files and settings will be stored here)
 - Many settings are saved to a json file to be loaded up on next boot. The current playlist, track, position in track, volume, and fade, as well as whether the playlist is shuffled.
 - The same json file is also used to store which songs are in which playlists, as well as the names of those playlists.
 
+### Soundboard
+- Use the tabs at the top of the application to switch between Music Box and Soundboard.
+- The Soundboard tab displays downloaded `.mp3`, `.ogg`, `.wav`, and `.flac` files as buttons.
+- Selecting a button immediately plays that audio file. Return to the Music Box tab to continue using playlists.
+
 
 ### Current Issues
 #### Troubleshooting: "unable to obtain file audio codec with ffprobe"
@@ -99,8 +105,6 @@ If you see this error after downloading, try the following:
 - Filtering track listbox using Entry to matching names
 - Changing listbox to multiple selections so multiple tracks can be added to a playlist at once
 - Support for non-Windows machines, particularly directory and file pathing.
-- Soundboard (grid of buttons for different downloaded audio files, sort of like a digital stream deck)
-
 ## Resources
 - [yt_dlp](https://github.com/yt-dlp/yt-dlp)
 - [pygame](https://www.pygame.org/)

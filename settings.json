@@ -1,18 +1,14 @@
 {
-    "current playlist": "Playlist 1",
-    "current track": "Of_Green_and_Grey_[_gzlmAW7bMw].mp3",
+    "current playlist": "All",
+    "current track": "Night_s_Cradle._Nature_Hymn_Soundtrack._DnD_and_tabletop_adventure_music._DMCA_fre_[vz_AChHftws].mp3",
     "queue position": 0,
-    "track position": 0.0,
+    "track position": 142.44561771982035,
     "shuffle": false,
     "volume": 0.5,
     "fade": 500,
     "playlists": {
-        "Playlist 0": [
-            "Standoff_[mjm_N6jkdRQ].mp3"
-        ],
-        "Playlist 1": [
-            "Of_Green_and_Grey_[_gzlmAW7bMw].mp3"
-        ],
+        "Playlist 0": [],
+        "Playlist 1": [],
         "Playlist 2": [],
         "Playlist 3": [],
         "Playlist 4": [],
